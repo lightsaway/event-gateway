@@ -1,0 +1,44 @@
+workspace = { members = ["loadtest"] }
+[profile.dev]
+incremental = true
+
+[package]
+name = "event-gateway"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+duration-str = "0.7.1"
+futures = "0.3.30"
+rdkafka = { version = "0.36.2", features = ["cmake-build"] }
+kafka = "0.9"
+jsonschema = "0.17"
+axum = "0.7.4"
+config = "0.14.0"
+prometheus = "0.13"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+hyper = "1.2.0"
+tokio = { version = "1.36.0", features = [
+    "full",
+] } # The 'full' feature includes all runtime and non-runtime components
+async-trait = "0.1" # This crates allows for async functions in traits
+serde = { version = "1", features = [
+    "derive",
+] } # Optional: For serialization and deserialization (if needed)
+serde_json = "1" # Optional: Handles JSON, often used
+
+uuid = { version = "1.7.0", features = [
+    "v4",
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+    "serde",
+] }
+
+log = { version = "0.4.20" }
+env_logger = "0.8"
+
+[dev-dependencies]
+tempfile = "3.2.0"

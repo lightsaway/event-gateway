@@ -1,0 +1,85 @@
+debug_mode = false
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[database]
+type = "inMemory"
+initial_data_json = '''{
+    "routing_rules": [
+        {
+            "id": "890fb970-7e68-473a-9fdf-b88e8bac6221",
+            "order": 0,
+            "topic": "test.topic",
+            "eventTypeCondition": {
+                "type": "startsWith",
+                "value": "test"
+            },
+            "eventVersionCondition": {
+                "type": "equals",
+                "value": "1.0"
+            },
+            "description": "A routing rule."
+        },
+        {
+            "id": "890fb970-7e68-473a-9fdf-b88e8bac6222",
+            "order": 1,
+            "topic": "prod.topic",
+            "eventTypeCondition": {
+                "type": "startsWith",
+                "value": "user.click"
+            },
+            "eventVersionCondition": {
+                "type": "equals",
+                "value": "1.0"
+            },
+            "description": "User event stream"
+        }
+    ],
+    "topic_validations": {
+        "prod.topic": [
+            {
+                "name": "example",
+                "description": "A schema.",
+                "schema": {
+                    "type": "json",
+                    "data": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "event_type": "user.click",
+                "event_version": "1.0",
+                "metadata": {}
+            }
+        ]
+    }
+}
+'''
+
+[gateway]
+metrics_enabled = true
+[gateway.publisher]
+# type = "noOp"
+type = "kafka"
+brokers = ["127.0.0.1:9092"]
+compression = "none"
+client_id = "event-gateway"
+acks = -1
+retries = 3
+required_acks = "none"
+conn_idle_timeout = "5m"
+message_timeout = "5s"
+ack_timeout = "5s"
+metadata_field_as_key = "user_id"
+
+[api]
+prefix = "/api/v1"
