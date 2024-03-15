@@ -137,10 +137,10 @@ impl GateWay for EventGateway {
     }
 
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError> {
-        todo!()
+        self.store.get_all_rules().map_err(GatewayError::from)
     }
 
     async fn delete_routing_rule(&self, id: &Uuid) -> Result<(), GatewayError> {
-        todo!()
+        self.store.delete_rule(id).map_err(GatewayError::from)
     }
 }

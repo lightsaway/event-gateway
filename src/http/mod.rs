@@ -14,6 +14,18 @@ async fn health_check() -> &'static str {
     r#"{ "status" : "healthy"}"#
 }
 
+pub fn app_router(
+    service: Arc<crate::gateway::gateway::EventGateway>,
+    config: &ApiConfig,
+) -> Router {
+    let routes = Router::new()
+        .route("/health-check", get(health_check))
+        .route("/event", post(handle_event))
+        .route("/routing-rules", get(read_rules))
+        .with_state(service);
+    Router::new().nest(config.prefix.as_str(), routes)
+}
+
 async fn handle_event(
     State(service): State<Arc<EventGateway>>,
     Json(event): Json<Event>,
@@ -37,13 +49,13 @@ async fn handle_event(
     }
 }
 
-pub fn app_router(
-    service: Arc<crate::gateway::gateway::EventGateway>,
-    config: &ApiConfig,
-) -> Router {
-    let routes = Router::new()
-        .route("/health_check", get(health_check))
-        .route("/event", post(handle_event))
-        .with_state(service);
-    Router::new().nest(config.prefix.as_str(), routes)
+async fn read_rules(State(service): State<Arc<EventGateway>>) -> Result<Response, Response> {
+    let result = service.get_routing_rules().await;
+    match result {
+        Ok(rules) => Ok(Response::builder()
+            .status(200)
+            .body(Body::from(serde_json::to_string(&rules).unwrap()))
+            .unwrap()),
+        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+    }
 }
