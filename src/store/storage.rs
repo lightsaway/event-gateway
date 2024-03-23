@@ -100,23 +100,11 @@ impl Storage for InMemoryStorage {
     }
 
     fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
-        // match self.routing_rules.get_mut(&id) {
-        //     Some(existing_rule) => {
-        //         *existing_rule = rule;
-        //         Ok(())
-        //     }
-        //     None => Err(StorageError::NotFound),
-        // }
         todo!()
     }
 
     fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
         todo!()
-        // if self.routing_rules.remove(&id).is_some() {
-        //     Ok(())
-        // } else {
-        //     Err(StorageError::NotFound)
-        // }
     }
 
     fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError> {

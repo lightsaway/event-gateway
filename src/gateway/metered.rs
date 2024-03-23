@@ -99,4 +99,13 @@ where
     async fn delete_routing_rule(&self, id: &uuid::Uuid) -> Result<(), GatewayError> {
         self.gateway.delete_routing_rule(id).await
     }
+
+    async fn get_topic_validations(
+        &self,
+    ) -> Result<
+        &std::collections::HashMap<String, Vec<crate::model::routing::DataSchema>>,
+        GatewayError,
+    > {
+        self.gateway.get_topic_validations().await
+    }
 }
