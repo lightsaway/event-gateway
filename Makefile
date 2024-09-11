@@ -38,5 +38,8 @@ reloading:
 loadtest:
 	@cargo run --release --manifest-path ./loadtest/Cargo.toml -- --report-file ./target/load_test.report.html --host http://localhost:8080 -u 1000 -r 1000 -t 60s
 
-run-infra:
-	@docker-compose up -d
+infra-run:
+	@docker compose up -d
+
+infra-stop:
+	@docker compose stop

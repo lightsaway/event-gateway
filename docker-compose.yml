@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   redpanda:
     image: vectorized/redpanda:latest
@@ -39,6 +37,63 @@ services:
       - KAFKA_BROKERS=redpanda:29092
       - SERVER_LISTENADDRESS=0.0.0.0
       - SERVER_LISTENPORT=8080
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883" # MQTT
+      - "9001:9001" # WebSockets
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    configs:
+      - source: mosquitto_config
+        target: /mosquitto/config/mosquitto.conf
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mosquitto_sub",
+          "-t",
+          "$$SYS/#",
+          "-C",
+          "1",
+          "-i",
+          "healthcheck",
+          "-W",
+          "3",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mqtt-explorer:
+    image: smeagolworms4/mqtt-explorer
+    container_name: mqtt-explorer
+    ports:
+      - "4000:4000"
+    environment:
+      - MQTT_CONNECTION_HOST=mosquitto
+      - MQTT_CONNECTION_PORT=1883
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+
+configs:
+  mosquitto_config:
+    content: |
+      listener 1883
+      protocol mqtt
+
+      listener 9001
+      protocol websockets
+
+      allow_anonymous true
 
 networks:
   default:
