@@ -24,6 +24,7 @@ use axum::{
     routing::{get, post},
     Extension, Json, Router,
 };
+
 use config::{Config, ConfigError, Environment, File};
 use configuration::{AppConfig, DatabaseConfig, PublisherConfig};
 use log::{debug, error, info, warn};
@@ -39,6 +40,7 @@ use store::{
 
 use crate::gateway::gateway::EventGateway;
 use crate::gateway::gateway::GateWay;
+use crate::publisher::mqtt_publisher::MqttPublisher;
 
 fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
     match config {
@@ -67,6 +69,7 @@ fn load_publisher(config: PublisherConfig) -> Box<dyn Publisher<Event> + Send + 
     match config {
         PublisherConfig::NoOp => Box::new(NoOpPublisher),
         PublisherConfig::Kafka(kafka_config) => Box::new(KafkaPublisher::new(kafka_config)),
+        PublisherConfig::Mqtt(mqtt_config) => Box::new(MqttPublisher::new(mqtt_config)),
     }
 }
 

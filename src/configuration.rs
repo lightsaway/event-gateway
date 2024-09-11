@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::publisher::kafka_publisher::KafkaPublisherConfig;
+use crate::publisher::mqtt_publisher::MqttPublisherConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +47,7 @@ pub struct ApiConfig {
 pub enum PublisherConfig {
     NoOp,
     Kafka(KafkaPublisherConfig),
+    Mqtt(MqttPublisherConfig),
 }
 
 #[derive(Debug, Deserialize)]
