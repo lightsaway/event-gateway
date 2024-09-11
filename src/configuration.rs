@@ -30,8 +30,15 @@ pub struct GatewayConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct JwtAuthConfig {
+    pub jwks_url: String,
+    pub refresh_interval_secs: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ApiConfig {
-    pub prefix: String,
+    pub prefix: Option<String>,
+    pub jwt_auth: Option<JwtAuthConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,6 +109,7 @@ mod tests {
             metrics_enabled = true
             [gateway.publisher]
             type = "noOp"
+            [api]
         "#;
 
         let config = config_from_str(toml, FileFormat::Toml).unwrap();
@@ -133,6 +141,8 @@ mod tests {
             metrics_enabled = true
             [gateway.publisher]
             type = "noOp"
+
+            [api]
         "#;
 
         let config = config_from_str(toml, FileFormat::Toml).unwrap();
@@ -163,6 +173,7 @@ mod tests {
             metrics_enabled = true
             [gateway.publisher]
             type = "noOp"
+            [api]
         "#;
 
         let config = config_from_str(toml, FileFormat::Toml).unwrap();

@@ -26,6 +26,7 @@ pub struct Event {
     pub event_type: String,
     pub event_version: Option<String>,
     pub metadata: HashMap<String, String>,
+    pub transport_metadata: Option<HashMap<String, String>>,
     pub data_type: Option<DataType>,
     pub data: Data,
     pub timestamp: Option<DateTime<Utc>>,

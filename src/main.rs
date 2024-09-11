@@ -91,7 +91,7 @@ async fn main() {
     let publisher = load_publisher(app_config.gateway.publisher);
     let service = Arc::new(EventGateway::new(publisher, storage).unwrap());
     info!("Loaded Gateway");
-    let app = app_router(service, &app_config.api);
+    let app = app_router(service, &app_config.api).await;
     let ip = app_config.server.host.parse::<IpAddr>().unwrap();
     let addr = SocketAddr::from((ip, app_config.server.port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

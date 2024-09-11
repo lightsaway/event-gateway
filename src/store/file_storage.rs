@@ -218,7 +218,7 @@ mod tests {
 
         // Change the rule's field, here we'll just clone and modify the id for simplicity
         rule.description = Some("new description".to_string());
-        storage.update_rule(rule.id, rule.clone())?;
+        storage.update_rule(rule.id, &rule)?;
 
         // Check if the update was successful
         let retrieved_rule = storage.get_rule(rule.id)?;
