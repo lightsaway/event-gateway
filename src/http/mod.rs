@@ -15,14 +15,15 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use std::collections::HashMap;
 use futures::Future;
 use hyper::header::USER_AGENT;
 use hyper::StatusCode;
+use jwks::Jwks;
 use jwt_authorizer::{
     Authorizer, IntoLayer, JwtAuthorizer, Refresh, RefreshStrategy, RegisteredClaims,
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -35,7 +36,6 @@ struct RequestMetadata {
     originator_ip: Option<String>,
     user_agent: Option<String>,
 }
-
 
 impl RequestMetadata {
     fn to_hash_map_string(&self) -> HashMap<String, String> {
@@ -50,7 +50,6 @@ impl RequestMetadata {
         map
     }
 }
-
 
 #[async_trait]
 impl<S> FromRequestParts<S> for RequestMetadata {
@@ -117,6 +116,7 @@ pub async fn app_router(
     let prefix = config.prefix.clone().unwrap_or("/".to_string());
     let router = match &config.jwt_auth {
         Some(cfg) => {
+            let jwks = Jwks::from_jwks_url(&cfg.jwks_url).await.unwrap();
             let authorizer: Authorizer<RegisteredClaims> =
                 JwtAuthorizer::from_jwks_url(&cfg.jwks_url)
                     .build()
