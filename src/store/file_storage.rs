@@ -6,6 +6,7 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use uuid::Uuid;
+use async_trait::async_trait;
 
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::store::storage::Storage;
@@ -65,27 +66,28 @@ impl FileStorage {
     }
 }
 
+#[async_trait]
 impl Storage for FileStorage {
-    fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError> {
+    async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError> {
         let _lock = self.lock.lock().unwrap();
         let mut dbs = self.read_database()?;
         dbs.rules.insert(rule.id, rule.to_owned());
         self.write_database(dbs)
     }
 
-    fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
+    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
         let _lock = self.lock.lock().unwrap();
         let dbs = self.read_database()?;
         Ok(dbs.rules.get(&id).cloned())
     }
 
-    fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
+    async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
         let _lock = self.lock.lock().unwrap();
         let dbs = self.read_database()?;
         Ok(dbs.rules.into_iter().map(|(_, rule)| rule).collect())
     }
 
-    fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
+    async fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
         let _lock = self.lock.lock().unwrap();
         let mut dbs = self.read_database()?;
 
@@ -97,7 +99,7 @@ impl Storage for FileStorage {
         }
     }
 
-    fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
+    async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
         let _lock = self.lock.lock().unwrap();
         let mut dbs = self.read_database()?;
 
@@ -108,18 +110,29 @@ impl Storage for FileStorage {
         }
     }
 
-    fn add_topic_validation(
+    async fn add_topic_validation(
         &self,
         v: &crate::model::routing::TopicValidationConfig,
     ) -> Result<(), StorageError> {
         todo!()
     }
 
-    fn get_all_topic_validations(&self) -> Result<&HashMap<String, Vec<DataSchema>>, StorageError> {
-        todo!()
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+        let _lock = self.lock.lock().unwrap();
+        let dbs = self.read_database()?;
+        let validations: HashMap<String, Vec<DataSchema>> = dbs.topic_validations
+            .into_iter()
+            .map(|(topic, configs)| {
+                let schemas = configs.into_iter()
+                    .map(|config| config.schema)
+                    .collect();
+                (topic, schemas)
+            })
+            .collect();
+        Ok(validations)
     }
 
-    fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
+    async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
         let _lock = self.lock.lock().unwrap();
         let mut dbs = self.read_database()?;
         let topic_validations: HashMap<String, Vec<TopicValidationConfig>> = dbs
@@ -164,8 +177,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_file_storage_add_and_get_rule() -> Result<(), StorageError> {
+    #[tokio::test]
+    async fn test_file_storage_add_and_get_rule() -> Result<(), StorageError> {
         // Create a temporary file
         let file: NamedTempFile = NamedTempFile::new()?;
         let file_path = file.path().to_path_buf();
@@ -174,18 +187,18 @@ mod tests {
 
         // Create and add a new rule to the storage
         let rule = create_dummy_rule();
-        storage.add_rule(&rule.clone())?;
+        storage.add_rule(&rule.clone()).await?;
 
         // Retrieve the rule we just added
-        let retrieved_rule = storage.get_rule(rule.id)?;
+        let retrieved_rule = storage.get_rule(rule.id).await?;
 
         // Check if the retrieved rule is the same as the one we added
         assert_eq!(retrieved_rule, Some(rule));
         Ok(())
     }
 
-    #[test]
-    fn test_file_storage_get_all_rules() -> Result<(), StorageError> {
+    #[tokio::test]
+    async fn test_file_storage_get_all_rules() -> Result<(), StorageError> {
         let file: NamedTempFile = NamedTempFile::new()?;
         let file_path = file.path().to_path_buf();
 
@@ -194,19 +207,19 @@ mod tests {
         // Add multiple rules
         let rule1 = create_dummy_rule();
         let rule2 = create_dummy_rule();
-        storage.add_rule(&rule1.clone())?;
-        storage.add_rule(&rule2.clone())?;
+        storage.add_rule(&rule1.clone()).await?;
+        storage.add_rule(&rule2.clone()).await?;
 
         // Retrieve all rules
-        let rules = storage.get_all_rules()?;
+        let rules = storage.get_all_rules().await?;
 
         // We should have 2 rules now
         assert_eq!(rules.len(), 2);
         Ok(())
     }
 
-    #[test]
-    fn test_file_storage_update_rule() -> Result<(), StorageError> {
+    #[tokio::test]
+    async fn test_file_storage_update_rule() -> Result<(), StorageError> {
         let file: NamedTempFile = NamedTempFile::new()?;
         let file_path = file.path().to_path_buf();
 
@@ -214,20 +227,20 @@ mod tests {
 
         // Add a rule, then update it
         let mut rule = create_dummy_rule();
-        storage.add_rule(&rule.clone())?;
+        storage.add_rule(&rule.clone()).await?;
 
         // Change the rule's field, here we'll just clone and modify the id for simplicity
         rule.description = Some("new description".to_string());
-        storage.update_rule(rule.id, &rule)?;
+        storage.update_rule(rule.id, &rule).await?;
 
         // Check if the update was successful
-        let retrieved_rule = storage.get_rule(rule.id)?;
+        let retrieved_rule = storage.get_rule(rule.id).await?;
         assert_eq!(retrieved_rule, Some(rule));
         Ok(())
     }
 
-    #[test]
-    fn test_file_storage_delete_rule() -> Result<(), StorageError> {
+    #[tokio::test]
+    async fn test_file_storage_delete_rule() -> Result<(), StorageError> {
         let file: NamedTempFile = NamedTempFile::new()?;
         let file_path = file.path().to_path_buf();
 
@@ -235,11 +248,11 @@ mod tests {
 
         // Add a rule, then delete it
         let rule = create_dummy_rule();
-        storage.add_rule(&rule.clone())?;
-        storage.delete_rule(rule.id)?;
+        storage.add_rule(&rule.clone()).await?;
+        storage.delete_rule(rule.id).await?;
 
         // Check if the rule is gone
-        let retrieved_rule = storage.get_rule(rule.id)?;
+        let retrieved_rule = storage.get_rule(rule.id).await?;
         assert_eq!(retrieved_rule, None);
         Ok(())
     }

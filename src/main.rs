@@ -35,6 +35,7 @@ use serde::Deserialize;
 use serde_json::json;
 use store::{
     file_storage::FileStorage,
+    postgres_storage::PostgresStorage,
     storage::{InMemoryStorage, Storage},
 };
 
@@ -60,7 +61,7 @@ fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
             Box::new(initial_data)
         }
         DatabaseConfig::Postgres(postgres_config) => {
-            unimplemented!("Postgres storage not implemented")
+            Box::new(PostgresStorage::new(&postgres_config).unwrap())
         }
     }
 }

@@ -80,9 +80,27 @@ services:
       mosquitto:
         condition: service_healthy
 
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: event_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d event_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mosquitto-data:
   mosquitto-log:
+  postgres_data:
 
 configs:
   mosquitto_config:

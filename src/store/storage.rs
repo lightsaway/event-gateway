@@ -6,6 +6,7 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self};
 use uuid::Uuid;
+use async_trait::async_trait;
 
 #[derive(Debug)]
 pub enum StorageError {
@@ -38,24 +39,23 @@ impl From<serde_json::Error> for StorageError {
     }
 }
 
+#[async_trait]
 pub trait Storage: Send + Sync {
-    fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError>;
-    fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError>;
-    fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError>;
-    fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError>;
-    fn delete_rule(&self, id: Uuid) -> Result<(), StorageError>;
+    async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError>;
+    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError>;
+    async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError>;
+    async fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError>;
+    async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError>;
 
-    fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError>;
-    fn get_all_topic_validations(&self) -> Result<&HashMap<String, Vec<DataSchema>>, StorageError>;
+    async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError>;
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError>;
 
-    fn get_validations_for_topic(&self, topic: &str) -> Result<&Vec<DataSchema>, StorageError> {
-        let validations = self.get_all_topic_validations()?;
-        // Use a static empty vector
-        static EMPTY: Vec<DataSchema> = Vec::new();
-        Ok(validations.get(topic).unwrap_or(&EMPTY))
+    async fn get_validations_for_topic(&self, topic: &str) -> Result<Vec<DataSchema>, StorageError> {
+        let validations = self.get_all_topic_validations().await?;
+        Ok(validations.get(topic).cloned().unwrap_or_default())
     }
 
-    fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError>;
+    async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError>;
 }
 
 #[derive(Deserialize)]
@@ -86,36 +86,37 @@ impl InMemoryStorage {
     }
 }
 
+#[async_trait]
 impl Storage for InMemoryStorage {
-    fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError> {
+    async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError> {
         todo!()
     }
 
-    fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
+    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
         Ok(self.routing_rules.iter().find(|r| r.id == id).cloned())
     }
 
-    fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
+    async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
         Ok(self.routing_rules.clone())
     }
 
-    fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
+    async fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
         todo!()
     }
 
-    fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
+    async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
         todo!()
     }
 
-    fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError> {
+    async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError> {
         todo!()
     }
 
-    fn get_all_topic_validations(&self) -> Result<&HashMap<String, Vec<DataSchema>>, StorageError> {
-        Ok(&self.topic_validations)
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+        Ok(self.topic_validations.clone())
     }
 
-    fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
+    async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
         todo!()
     }
 }

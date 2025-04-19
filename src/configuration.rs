@@ -76,9 +76,9 @@ pub struct InMemoryDatabaseConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct PostgresDatabaseConfig {
-    username: String,
-    password: String,
-    endpoint: String,
+    pub username: String,
+    pub password: String,
+    pub endpoint: String,
 }
 
 #[cfg(test)]

@@ -12,6 +12,9 @@ prod:
 run-prod:
 	@RUST_LOG=info ./target/release/event-gateway
 
+run-postgres:
+	@APP_CONFIG_PATH=config-postgres.toml RUST_LOG=info cargo run
+
 post_event:
 	curl -v -X POST -H "Content-Type: application/json" -d '{ \
 		"id": "123e4567-e89b-12d3-a456-426614174000", \

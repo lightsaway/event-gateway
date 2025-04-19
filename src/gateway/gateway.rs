@@ -15,6 +15,8 @@ use jsonschema::{Draft, JSONSchema};
 use log::{debug, info};
 use serde_json::{Map, Value};
 use uuid::Uuid;
+use futures::TryFutureExt;
+use std::sync::Arc;
 
 pub trait GateWay {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError>;
@@ -27,7 +29,7 @@ pub trait GateWay {
 
     async fn get_topic_validations(
         &self,
-    ) -> Result<&HashMap<String, Vec<DataSchema>>, GatewayError>;
+    ) -> Result<HashMap<String, Vec<DataSchema>>, GatewayError>;
 }
 
 #[derive(Debug)]
@@ -71,7 +73,7 @@ impl From<PublisherError> for GatewayError {
 
 impl GateWay for EventGateway {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError> {
-        let rules = self.store.get_all_rules().map_err(GatewayError::from)?;
+        let rules = self.store.get_all_rules().await.map_err(GatewayError::from)?;
         let routings = TopicRoutings { rules };
 
         match routings.route(&event) {
@@ -79,6 +81,7 @@ impl GateWay for EventGateway {
                 let topic_schemas = self
                     .store
                     .get_validations_for_topic(topic)
+                    .await
                     .map_err(GatewayError::from)?;
                 let schemas: Vec<&DataSchema> = topic_schemas
                     .iter()
@@ -128,34 +131,38 @@ impl GateWay for EventGateway {
     async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), GatewayError> {
         self.store
             .add_topic_validation(v)
+            .await
             .map_err(GatewayError::from)
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), GatewayError> {
         self.store
             .delete_topic_validation(id)
+            .await
             .map_err(GatewayError::from)
     }
 
     async fn add_routing_rule(&self, rule: &TopicRoutingRule) -> Result<(), GatewayError> {
-        self.store.add_rule(rule).map_err(GatewayError::from)
+        self.store.add_rule(rule).await.map_err(GatewayError::from)
     }
 
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError> {
-        self.store.get_all_rules().map_err(GatewayError::from)
+        self.store.get_all_rules().await.map_err(GatewayError::from)
     }
 
     async fn delete_routing_rule(&self, id: &Uuid) -> Result<(), GatewayError> {
         self.store
             .delete_rule(id.to_owned())
+            .await
             .map_err(GatewayError::from)
     }
 
     async fn get_topic_validations(
         &self,
-    ) -> Result<&HashMap<String, Vec<DataSchema>>, GatewayError> {
+    ) -> Result<HashMap<String, Vec<DataSchema>>, GatewayError> {
         self.store
             .get_all_topic_validations()
+            .await
             .map_err(GatewayError::from)
     }
 }
