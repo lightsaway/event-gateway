@@ -18,7 +18,12 @@ impl From<tokio_postgres::Error> for StorageError {
 }
 
 impl PostgresStorage {
-    pub fn new(config: &crate::configuration::PostgresDatabaseConfig) -> Result<Self, StorageError> {
+    pub async fn new(config: &crate::configuration::PostgresDatabaseConfig) -> Result<Self, StorageError> {
+        // Run migrations first
+        crate::store::migrations::run_migrations(config)
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+
         let mut cfg = Config::new();
         cfg.host = Some(config.endpoint.clone());
         cfg.user = Some(config.username.clone());

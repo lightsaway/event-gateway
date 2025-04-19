@@ -43,7 +43,7 @@ use crate::gateway::gateway::EventGateway;
 use crate::gateway::gateway::GateWay;
 use crate::publisher::mqtt_publisher::MqttPublisher;
 
-fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
+async fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
     match config {
         DatabaseConfig::File(file_config) => {
             let path = file_config.path;
@@ -61,7 +61,7 @@ fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
             Box::new(initial_data)
         }
         DatabaseConfig::Postgres(postgres_config) => {
-            Box::new(PostgresStorage::new(&postgres_config).unwrap())
+            Box::new(PostgresStorage::new(&postgres_config).await.unwrap())
         }
     }
 }
@@ -91,7 +91,7 @@ async fn main() {
     env_logger::init();
     let app_config = load_configuration().unwrap();
     info!("Loaded config: {}", app_config);
-    let storage = load_storage(app_config.database);
+    let storage = load_storage(app_config.database).await;
     let publisher = load_publisher(app_config.gateway.publisher);
     let service = Arc::new(EventGateway::new(publisher, storage).unwrap());
     info!("Loaded Gateway");
