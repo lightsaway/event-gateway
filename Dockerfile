@@ -1,10 +1,14 @@
-FROM rust:1.70-slim-bullseye as builder
+FROM rust:1.75-alpine as builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    pkgconfig \
+    musl-dev \
+    cmake \
+    make \
+    gcc \
+    g++ \
+    libressl-dev
 
 # Create a new empty shell project
 WORKDIR /usr/src/event-gateway
@@ -14,13 +18,12 @@ COPY . .
 RUN cargo build --release
 
 # Create a new stage with a minimal image
-FROM debian:bullseye-slim
+FROM alpine:3.16
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     ca-certificates \
-    libssl1.1 \
-    && rm -rf /var/lib/apt/lists/*
+    libressl
 
 # Copy the build artifact from the builder stage
 COPY --from=builder /usr/src/event-gateway/target/release/event-gateway /usr/local/bin/event-gateway
@@ -28,7 +31,7 @@ COPY --from=builder /usr/src/event-gateway/config.toml /etc/event-gateway/config
 COPY --from=builder /usr/src/event-gateway/config-postgres.toml /etc/event-gateway/config-postgres.toml
 
 # Create a non-root user to run the application
-RUN useradd -m -u 1000 event-gateway
+RUN adduser -D -u 1000 event-gateway
 USER event-gateway
 
 # Set the working directory
