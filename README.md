@@ -22,7 +22,7 @@ Event Gateway is a service that receives events, validates them against predefin
 
 - Rust 1.70+ (for development)
 - PostgreSQL 13+ (for PostgreSQL storage backend)
-- Docker and Docker Compose (for infrastructure)
+- Docker and Docker Compose (for containerized deployment)
 
 ### Installation
 
@@ -83,6 +83,32 @@ cargo build --release
 ```bash
 APP_CONFIG_PATH=config-postgres.toml cargo run
 ```
+
+### Docker Deployment
+
+The project includes Docker and Docker Compose configuration for containerized deployment:
+
+#### Building the Docker Image
+
+```bash
+docker build -t event-gateway .
+```
+
+#### Running with Docker Compose
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+```
+
+The Docker Compose configuration sets up:
+- Event Gateway service
+- PostgreSQL database
+- Networking between services
+- Persistent volume for PostgreSQL data
 
 ### Infrastructure Setup
 
