@@ -13,11 +13,14 @@ mod embedded {
 pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), StorageError> {
     info!("Running database migrations...");
     
+    // Parse endpoint which contains both host and port
+    let (host, port) = parse_endpoint(&config.endpoint);
+    
     // Connect to the database
     let (mut client, connection) = tokio_postgres::connect(
         &format!(
-            "host={} user={} password={} dbname=event_gateway",
-            config.endpoint, config.username, config.password
+            "host={} port={} user={} password={} dbname={}",
+            host, port, config.username, config.password, config.dbname
         ),
         NoTls,
     )
@@ -43,4 +46,15 @@ pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), Stora
     
     info!("Database migrations completed successfully");
     Ok(())
+}
+
+// Helper function to parse endpoint into host and port
+fn parse_endpoint(endpoint: &str) -> (String, u16) {
+    if let Some(colon_pos) = endpoint.find(':') {
+        let (host, port_str) = endpoint.split_at(colon_pos);
+        let port = port_str.trim_start_matches(':').parse::<u16>().unwrap_or(5432);
+        (host.to_string(), port)
+    } else {
+        (endpoint.to_string(), 5432) // Default PostgreSQL port
+    }
 } 

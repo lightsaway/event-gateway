@@ -79,6 +79,18 @@ pub struct PostgresDatabaseConfig {
     pub username: String,
     pub password: String,
     pub endpoint: String,
+    #[serde(default = "default_cache_refresh_interval")]
+    pub cache_refresh_interval_secs: u64,
+    #[serde(default = "default_dbname")]
+    pub dbname: String,
+}
+
+fn default_cache_refresh_interval() -> u64 {
+    300 // 5 minutes default
+}
+
+fn default_dbname() -> String {
+    "event_gateway".to_string()
 }
 
 #[cfg(test)]
@@ -170,6 +182,7 @@ mod tests {
             username = "admin"
             password = "secret"
             endpoint = "localhost:5432"
+            cache_refresh_interval_secs = 600
 
             [gateway]
             metrics_enabled = true
@@ -185,6 +198,7 @@ mod tests {
                 assert_eq!(pg_config.username, "admin");
                 assert_eq!(pg_config.password, "secret");
                 assert_eq!(pg_config.endpoint, "localhost:5432");
+                assert_eq!(pg_config.cache_refresh_interval_secs, 600);
             }
             _ => panic!("Expected PostgresDatabaseConfig"),
         }

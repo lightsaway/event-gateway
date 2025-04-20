@@ -25,15 +25,30 @@ impl PostgresStorage {
             .map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
 
         let mut cfg = Config::new();
-        cfg.host = Some(config.endpoint.clone());
+        
+        // Parse endpoint which contains both host and port
+        let (host, port) = parse_endpoint(&config.endpoint);
+        cfg.host = Some(host);
+        cfg.port = Some(port);
         cfg.user = Some(config.username.clone());
         cfg.password = Some(config.password.clone());
-        cfg.dbname = Some("event_gateway".to_string());
+        cfg.dbname = Some(config.dbname.clone());
 
         let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)
             .map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
 
         Ok(PostgresStorage { pool })
+    }
+}
+
+// Helper function to parse endpoint into host and port
+fn parse_endpoint(endpoint: &str) -> (String, u16) {
+    if let Some(colon_pos) = endpoint.find(':') {
+        let (host, port_str) = endpoint.split_at(colon_pos);
+        let port = port_str.trim_start_matches(':').parse::<u16>().unwrap_or(5432);
+        (host.to_string(), port)
+    } else {
+        (endpoint.to_string(), 5432) // Default PostgreSQL port
     }
 }
 

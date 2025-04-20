@@ -36,6 +36,7 @@ use serde_json::json;
 use store::{
     file_storage::FileStorage,
     postgres_storage::PostgresStorage,
+    cached_postgres_storage::CachedPostgresStorage,
     storage::{InMemoryStorage, Storage},
 };
 
@@ -61,7 +62,12 @@ async fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
             Box::new(initial_data)
         }
         DatabaseConfig::Postgres(postgres_config) => {
-            Box::new(PostgresStorage::new(&postgres_config).await.unwrap())
+            let postgres = PostgresStorage::new(&postgres_config).await.unwrap();
+            let cached_postgres = CachedPostgresStorage::new(
+                postgres,
+                postgres_config.cache_refresh_interval_secs,
+            ).await.unwrap();
+            Box::new(cached_postgres)
         }
     }
 }
