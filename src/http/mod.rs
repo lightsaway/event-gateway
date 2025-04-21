@@ -166,8 +166,12 @@ async fn extract_request_metadata(
     Ok(next.run(req).await)
 }
 
-async fn health_check() -> &'static str {
-    r#"{ "status" : "healthy"}"#
+async fn health_check() -> Response {
+    Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{ "status" : "healthy"}"#))
+        .unwrap()
 }
 
 async fn handle_event(
@@ -279,6 +283,7 @@ async fn read_topic_validations(
     match result {
         Ok(validations) => Ok(Response::builder()
             .status(200)
+            .header("Content-Type", "application/json")
             .body(Body::from(serde_json::to_string(&validations).unwrap()))
             .unwrap()),
         Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
@@ -301,6 +306,7 @@ async fn read_rules(State(service): State<Arc<EventGateway>>) -> Result<Response
     match result {
         Ok(rules) => Ok(Response::builder()
             .status(200)
+            .header("Content-Type", "application/json")
             .body(Body::from(serde_json::to_string(&rules).unwrap()))
             .unwrap()),
         Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),

@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom'
 import './App.css'
 import DashboardPage from './pages/dashboard'
 import RoutingRulesPage from './pages/routing-rules'
+import TopicValidationsPage from './pages/topic-validations'
 
 function App() {
   return (
@@ -46,7 +47,7 @@ function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/events" element={<div>Events Page (Coming Soon)</div>} />
             <Route path="/rules" element={<RoutingRulesPage />} />
-            <Route path="/validations" element={<div>Topic Validations Page (Coming Soon)</div>} />
+            <Route path="/validations" element={<TopicValidationsPage />} />
           </Routes>
         </main>
       </div>
