@@ -56,7 +56,6 @@ export function ValidationDialog({ open, onOpenChange, onSave, initialData, onSu
     try {
       setLoading(true);
       setError(null);
-      console.log(formData.schema.schema);
       
       // Format the schema correctly to match the add_topic_validations.sh script
       const formattedSchema = {
