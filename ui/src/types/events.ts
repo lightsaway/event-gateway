@@ -4,8 +4,8 @@ export type DataType = 'string' | 'json' | 'binary';
 
 export interface Event {
   id: string;
-  type: string;
-  version?: string;
+  eventType: string;
+  eventVersion: string;
   data: any;
   metadata?: Record<string, any>;
   transport_metadata?: Record<string, any>;

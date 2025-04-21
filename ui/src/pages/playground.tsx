@@ -1,31 +1,75 @@
-import React, { useState } from 'react';
-import { Form, Input, Select, Button, message, Tabs, Table, Tag, Tooltip } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Select, Button, Tabs, Table, Tag, Tooltip } from 'antd';
 import { v4 as uuidv4 } from 'uuid';
 import { Event, EventFormValues, DataType } from '../types/events';
 import { sendEvent } from '../services/events';
+import { useToast } from "@/hooks/use-toast"
+import { Copy, Trash2 } from 'lucide-react';
 
 const { TabPane } = Tabs;
 
-interface StoredEvent extends Event {
+interface StoredEvent {
+  id: string;
+  eventType: string;
+  eventVersion: string;
+  data: any;
+  metadata?: Record<string, any>;
   submittedAt: string;
   result: 'success' | 'error';
   errorMessage?: string;
 }
 
+const HISTORY_STORAGE_KEY = 'event_gateway_history';
+
 const PlaygroundPage: React.FC = () => {
+  const { toast } = useToast();
   const [form] = Form.useForm();
   const [rawJson, setRawJson] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<StoredEvent[]>([]);
 
+  useEffect(() => {
+    const savedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error('Failed to load history from localStorage:', error);
+      }
+    }
+  }, []);
+
+  const copyToClipboard = (event: StoredEvent) => {
+    const eventToCopy = {
+      id: event.id,
+      type: event.eventType,
+      version: event.eventVersion,
+      data: event.data,
+      metadata: event.metadata,
+      timestamp: event.submittedAt,
+      origin: 'playground'
+    };
+    navigator.clipboard.writeText(JSON.stringify(eventToCopy, null, 2));
+    toast({
+      title: "Success",
+      description: "Event copied to clipboard",
+    });
+  };
+
   const saveEventToStorage = (event: Event, result: 'success' | 'error', errorMessage?: string) => {
     const storedEvent: StoredEvent = {
-      ...event,
+      id: event.id,
+      eventType: event.eventType,
+      eventVersion: event.eventVersion,
+      data: event.data,
+      metadata: event.metadata,
       submittedAt: new Date().toISOString(),
       result,
       errorMessage,
     };
-    setHistory(prev => [storedEvent, ...prev]);
+    const newHistory = [storedEvent, ...history];
+    setHistory(newHistory);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
   };
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -33,8 +77,8 @@ const PlaygroundPage: React.FC = () => {
     try {
       const event: Event = {
         id: uuidv4(),
-        type: values.type,
-        version: values.version,
+        eventType: values.type,
+        eventVersion: values.version || 'N/A',
         data: values.dataType === 'json' ? JSON.parse(values.data) : values.data,
         metadata: values.metadata ? JSON.parse(values.metadata) : undefined,
         transport_metadata: values.transportMetadata ? JSON.parse(values.transportMetadata) : undefined,
@@ -43,17 +87,24 @@ const PlaygroundPage: React.FC = () => {
       };
 
       await sendEvent(event);
-      message.success('Event sent successfully');
+      toast({
+        title: "Success",
+        description: "Event sent successfully",
+      });
       saveEventToStorage(event, 'success');
       form.resetFields();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send event';
-      message.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       // Create a minimal event object for error case
       const errorEvent: Event = {
         id: uuidv4(),
-        type: values.type,
-        version: values.version,
+        eventType: values.type,
+        eventVersion: values.version || 'N/A',
         data: values.dataType === 'json' ? JSON.parse(values.data) : values.data,
         timestamp: new Date().toISOString(),
         origin: 'playground',
@@ -69,12 +120,19 @@ const PlaygroundPage: React.FC = () => {
     try {
       const event = JSON.parse(rawJson);
       await sendEvent(event);
-      message.success('Event sent successfully');
+      toast({
+        title: "Success",
+        description: "Event sent successfully",
+      });
       saveEventToStorage(event, 'success');
       setRawJson('');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send event';
-      message.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       try {
         const event = JSON.parse(rawJson);
         saveEventToStorage(event, 'error', errorMessage);
@@ -86,16 +144,28 @@ const PlaygroundPage: React.FC = () => {
     }
   };
 
+  const deleteFromHistory = (eventId: string) => {
+    const newHistory = history.filter(event => event.id !== eventId);
+    setHistory(newHistory);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
+    toast({
+      title: "Success",
+      description: "Event removed from history",
+    });
+  };
+
   const columns = [
     {
       title: 'Type',
-      dataIndex: 'type',
-      key: 'type',
+      dataIndex: 'eventType',
+      key: 'eventType',
+      render: (text: string, record: StoredEvent) => record.eventType || 'N/A',
     },
     {
       title: 'Version',
-      dataIndex: 'version',
-      key: 'version',
+      dataIndex: 'eventVersion',
+      key: 'eventVersion',
+      render: (text: string, record: StoredEvent) => record.eventVersion || 'N/A',
     },
     {
       title: 'Submitted At',
@@ -113,6 +183,26 @@ const PlaygroundPage: React.FC = () => {
             {result === 'success' ? 'Success' : 'Failed'}
           </Tag>
         </Tooltip>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_: any, record: StoredEvent) => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            type="text"
+            icon={<Copy className="h-4 w-4" />}
+            onClick={() => copyToClipboard(record)}
+            style={{ padding: '4px' }}
+          />
+          <Button
+            type="text"
+            icon={<Trash2 className="h-4 w-4" />}
+            onClick={() => deleteFromHistory(record.id)}
+            style={{ padding: '4px', color: '#ff4d4f' }}
+          />
+        </div>
       ),
     },
   ];

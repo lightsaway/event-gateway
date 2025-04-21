@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react';
 import { getAllValidations, createValidation, deleteValidation, TopicValidationConfig, DataSchema } from '../services/topic-validations';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Uuid } from '../types/common';
 import { Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from "@/hooks/use-toast"
@@ -14,20 +9,8 @@ import { ValidationDialog } from '@/components/topic-validations/validation-dial
 
 export default function TopicValidationsPage() {
   const { toast } = useToast()
-  const [validations, setValidations] = useState<Record<string, DataSchema[]>>({});
+  const [validations, setValidations] = useState<Record<string, TopicValidationConfig[]>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedValidation, setSelectedValidation] = useState<TopicValidationConfig | null>(null);
-  const [formData, setFormData] = useState({
-    topic: '',
-    schema: {
-      id: '',
-      name: '',
-      schema: '',
-      description: '',
-      event_type: '',
-      event_version: '',
-    },
-  });
 
   useEffect(() => {
     loadValidations();
@@ -98,13 +81,13 @@ export default function TopicValidationsPage() {
                     <div className="flex items-center justify-between">
                       <CollapsibleTrigger className="flex-1 text-left">
                         <div className="p-4">
-                          <h3 className="font-medium">{schema.name}</h3>
+                          <h3 className="font-medium">{schema.schema.name}</h3>
                           <div className="text-sm text-muted-foreground space-y-1">
-                            {schema.description && (
-                              <p>{schema.description}</p>
+                            <p>Event Type: {schema.schema.event_type}</p>
+                            <p>Event Version: {schema.schema.event_version}</p>
+                            {schema.schema.description && (
+                              <p>{schema.schema.description}</p>
                             )}
-                            <p>Event Type: {schema.event_type}</p>
-                            <p>Event Version: {schema.event_version}</p>
                           </div>
                         </div>
                       </CollapsibleTrigger>

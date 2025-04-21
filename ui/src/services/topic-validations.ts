@@ -17,7 +17,7 @@ export interface TopicValidationConfig {
 
 const API_BASE = '/api/v1';
 
-export async function getAllValidations(): Promise<Record<string, DataSchema[]>> {
+export async function getAllValidations(): Promise<Record<string, TopicValidationConfig[]>> {
   const response = await fetch(`${API_BASE}/topic-validations`);
   if (!response.ok) {
     throw new Error('Failed to fetch topic validations');
