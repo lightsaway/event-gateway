@@ -8,8 +8,11 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Uuid } from '../types/common';
 import { Trash2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useToast } from "@/hooks/use-toast"
 
 export default function TopicValidationsPage() {
+  const { toast } = useToast()
   const [validations, setValidations] = useState<Record<string, DataSchema[]>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedValidation, setSelectedValidation] = useState<TopicValidationConfig | null>(null);
@@ -40,28 +43,35 @@ export default function TopicValidationsPage() {
     e.preventDefault();
     try {
       await createValidation(formData);
-      await loadValidations();
-      setIsDialogOpen(false);
-      setFormData({
-        topic: '',
-        schema: {
-          id: '',
-          name: '',
-          schema: '',
-          description: '',
-        },
+      toast({
+        title: "Success",
+        description: "Validation schema created successfully",
       });
+      setIsDialogOpen(false);
+      loadValidations();
     } catch (error) {
-      console.error('Failed to create validation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create validation schema",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDelete = async (id: Uuid) => {
+  const handleDelete = async (topic: string, schemaId: string) => {
     try {
-      await deleteValidation(id);
-      await loadValidations();
+      await deleteValidation(schemaId);
+      toast({
+        title: "Success",
+        description: "Validation schema deleted successfully",
+      });
+      loadValidations();
     } catch (error) {
-      console.error('Failed to delete validation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete validation schema",
+        variant: "destructive",
+      });
     }
   };
 
@@ -82,21 +92,34 @@ export default function TopicValidationsPage() {
             <CardContent>
               <div className="space-y-4">
                 {schemas.map((schema) => (
-                  <div key={schema.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{schema.name}</h3>
-                      {schema.description && (
-                        <p className="text-sm text-gray-500">{schema.description}</p>
-                      )}
+                  <Collapsible key={schema.id} className="border rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger className="flex-1 text-left">
+                        <div className="p-4">
+                          <h3 className="font-medium">{schema.name}</h3>
+                          {schema.description && (
+                            <p className="text-sm text-gray-500">{schema.description}</p>
+                          )}
+                        </div>
+                      </CollapsibleTrigger>
+                      <div className="p-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(topic, schema.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(schema.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4">
+                        <pre className="bg-muted p-4 rounded-lg text-sm overflow-x-auto">
+                          {JSON.stringify(schema.schema, null, 2)}
+                        </pre>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 ))}
               </div>
             </CardContent>

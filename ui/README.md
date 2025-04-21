@@ -1,54 +1,135 @@
-# React + TypeScript + Vite
+# Event Gateway UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Dashboard**: Overview of events, rules, and system metrics
+- **Routing Rules**: Create, edit, and manage event routing rules
+- **Topic Validations**: Define and manage validation schemas for topics
+- **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React**: UI library
+- **TypeScript**: Type safety
+- **React Router**: Client-side routing
+- **Tailwind CSS**: Utility-first CSS framework
+- **Radix UI**: Accessible UI components
+- **Lucide Icons**: Beautiful icons
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Project Structure
+
+```
+ui/
+├── public/              # Static assets
+├── src/
+│   ├── app/             # App configuration
+│   ├── components/      # Reusable UI components
+│   │   ├── ui/          # Base UI components
+│   │   └── ...          # Feature-specific components
+│   ├── hooks/           # Custom React hooks
+│   ├── lib/             # Utility functions
+│   ├── pages/           # Page components
+│   ├── services/        # API services
+│   ├── types/           # TypeScript type definitions
+│   ├── App.tsx          # Main App component
+│   ├── main.tsx         # Application entry point
+│   └── index.css        # Global styles
+├── package.json         # Dependencies and scripts
+└── tsconfig.json        # TypeScript configuration
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Prerequisites
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+2. Navigate to the UI directory:
+   ```
+   cd ui
+   ```
+3. Install dependencies:
+   ```
+   npm install
+   # or
+   yarn install
+   ```
+
+### Development
+
+Start the development server:
+
 ```
+npm run dev
+# or
+yarn dev
+```
+
+The application will be available at [http://localhost:5173](http://localhost:5173).
+
+### Building for Production
+
+Build the application for production:
+
+```
+npm run build
+# or
+yarn build
+```
+
+The built files will be in the `dist` directory.
+
+## Available Scripts
+
+- `dev`: Start development server
+- `build`: Build for production
+- `preview`: Preview production build
+- `lint`: Run ESLint
+- `type-check`: Run TypeScript type checking
+
+## UI Components
+
+The application uses a combination of custom components and Radix UI primitives:
+
+- **Button**: Various button styles and variants
+- **Card**: Container for content with header, content, and footer sections
+- **Dialog**: Modal dialogs for forms and confirmations
+- **Input**: Text input fields
+- **Label**: Form labels
+- **Select**: Dropdown selection
+- **Table**: Data tables with sorting and pagination
+- **Toast**: Notification system
+
+## State Management
+
+The application uses React's built-in state management with hooks:
+
+- `useState`: Local component state
+- `useEffect`: Side effects and data fetching
+- `useToast`: Toast notifications
+
+## Routing
+
+The application uses React Router for client-side routing:
+
+- `/`: Dashboard
+- `/events`: Events page (coming soon)
+- `/rules`: Routing rules management
+- `/validations`: Topic validations management
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
+
+## License
+
+This project is licensed under the MIT License.
