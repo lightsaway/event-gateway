@@ -1,13 +1,16 @@
 import { Uuid } from '../types/common';
 
 export interface StringExpression {
-  type: 'equals';
+  type: 'regexMatch' | 'equals' | 'startsWith' | 'endsWith' | 'contains';
   value: string;
 }
 
 export interface Condition {
-  type: string;
-  value: string;
+  and?: Condition[];
+  or?: Condition[];
+  not?: Condition;
+  type?: string;
+  value?: string;
 }
 
 export interface TopicRoutingRule {

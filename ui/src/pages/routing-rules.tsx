@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Pencil, Trash2 } from 'lucide-react';
 import { RuleDialog } from '@/components/routing-rules/rule-dialog';
+import { ConditionDisplay } from '@/components/routing-rules/condition-display';
 
 export default function RoutingRulesPage() {
   const [rules, setRules] = useState<TopicRoutingRule[]>([]);
@@ -109,12 +110,20 @@ export default function RoutingRulesPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rules.map((rule) => (
+          {rules.filter(rule => rule != null).map((rule) => (
             <TableRow key={rule.id}>
               <TableCell>{rule.order}</TableCell>
               <TableCell>{rule.topic}</TableCell>
-              <TableCell>{rule.eventTypeCondition.value}</TableCell>
-              <TableCell>{rule.eventVersionCondition?.value || '-'}</TableCell>
+              <TableCell>
+                <ConditionDisplay condition={rule.eventTypeCondition} />
+              </TableCell>
+              <TableCell>
+                {rule.eventVersionCondition ? (
+                  <ConditionDisplay condition={rule.eventVersionCondition} />
+                ) : (
+                  '-'
+                )}
+              </TableCell>
               <TableCell>{rule.description || '-'}</TableCell>
               <TableCell>
                 <div className="flex gap-2">

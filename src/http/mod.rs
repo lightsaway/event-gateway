@@ -235,7 +235,7 @@ async fn create_routing_rule(
     let result = service.add_routing_rule(&rule).await;
     match result {
         Ok(_) => Ok(Response::builder()
-            .status(204)
+            .status(200)
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
@@ -263,7 +263,7 @@ async fn update_routing_rule(
     let result = service.update_routing_rule(id, &rule).await;
     match result {
         Ok(_) => Ok(Response::builder()
-            .status(204)
+            .status(200)
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
@@ -282,7 +282,7 @@ async fn delete_routing_rule(
     let result = service.delete_routing_rule(&id).await;
     match result {
         Ok(_) => Ok(Response::builder()
-            .status(204)
+            .status(200)
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
@@ -306,7 +306,7 @@ async fn create_topic_validation(
     let result = service.add_topic_validation(&validation).await;
     match result {
         Ok(_) => Ok(Response::builder()
-            .status(204)
+            .status(200)
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
@@ -339,7 +339,7 @@ async fn delete_topic_validation(
     let result = service.delete_topic_validation(&id).await;
     match result {
         Ok(_) => Ok(Response::builder()
-            .status(204)
+            .status(200)
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),

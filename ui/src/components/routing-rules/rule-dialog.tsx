@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TopicRoutingRule } from '@/services/routing-rules';
+import { ConditionBuilder } from './condition-builder';
+import { TopicRoutingRule, Condition } from '@/services/routing-rules';
 
 interface RuleDialogProps {
   open: boolean;
@@ -19,166 +13,109 @@ interface RuleDialogProps {
   initialData?: TopicRoutingRule;
 }
 
-export function RuleDialog({ open, onOpenChange, onSave, initialData }: RuleDialogProps) {
-  const [formData, setFormData] = useState({
-    order: initialData?.order ?? 0,
-    topic: initialData?.topic ?? '',
-    description: initialData?.description ?? '',
-    eventTypeCondition: {
-      type: 'equals',
-      value: initialData?.eventTypeCondition.value ?? '',
-    },
-    eventVersionCondition: initialData?.eventVersionCondition
-      ? {
-          type: 'equals',
-          value: initialData.eventVersionCondition.value,
-        }
-      : undefined,
+const defaultCondition: Condition = {
+  type: 'equals',
+  value: '',
+};
+
+export function RuleDialog({
+  open,
+  onOpenChange,
+  onSave,
+  initialData,
+}: RuleDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<Omit<TopicRoutingRule, 'id'>>({
+    order: 0,
+    topic: '',
+    description: '',
+    eventTypeCondition: defaultCondition,
+    eventVersionCondition: undefined,
   });
 
   useEffect(() => {
     if (initialData) {
+      const { id, ...data } = initialData;
+      setFormData(data);
+    } else {
       setFormData({
-        order: initialData.order,
-        topic: initialData.topic,
-        description: initialData.description ?? '',
-        eventTypeCondition: {
-          type: 'equals',
-          value: initialData.eventTypeCondition.value,
-        },
-        eventVersionCondition: initialData.eventVersionCondition
-          ? {
-              type: 'equals',
-              value: initialData.eventVersionCondition.value,
-            }
-          : undefined,
+        order: 0,
+        topic: '',
+        description: '',
+        eventTypeCondition: defaultCondition,
+        eventVersionCondition: undefined,
       });
     }
-  }, [initialData]);
+  }, [initialData, open]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
-      setError(null);
       await onSave(formData);
       onOpenChange(false);
-    } catch (err) {
-      setError('Failed to save rule');
-      console.error(err);
+    } catch (error) {
+      console.error('Failed to save rule:', error);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{initialData ? 'Edit Rule' : 'Add Rule'}</DialogTitle>
-          <DialogDescription>
-            {initialData
-              ? 'Edit the routing rule details below.'
-              : 'Create a new routing rule by filling out the form below.'}
-          </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="order" className="text-right">
-                Order
-              </Label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="order">Order</Label>
               <Input
                 id="order"
                 type="number"
                 value={formData.order}
-                onChange={(e) =>
-                  setFormData({ ...formData, order: parseInt(e.target.value, 10) })
-                }
-                className="col-span-3"
+                onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                required
               />
             </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="topic" className="text-right">
-                Topic
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="topic">Topic</Label>
               <Input
                 id="topic"
                 value={formData.topic}
-                onChange={(e) =>
-                  setFormData({ ...formData, topic: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="eventType" className="text-right">
-                Event Type
-              </Label>
-              <Input
-                id="eventType"
-                value={formData.eventTypeCondition.value}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    eventTypeCondition: {
-                      type: 'equals',
-                      value: e.target.value,
-                    },
-                  })
-                }
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="eventVersion" className="text-right">
-                Event Version
-              </Label>
-              <Input
-                id="eventVersion"
-                value={formData.eventVersionCondition?.value ?? ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    eventVersionCondition: e.target.value
-                      ? {
-                          type: 'equals',
-                          value: e.target.value,
-                        }
-                      : undefined,
-                  })
-                }
-                placeholder="Optional"
-                className="col-span-3"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Optional"
-                className="col-span-3"
+                onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                required
               />
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+          <div className="space-y-2">
+            <Label>Event Type Condition</Label>
+            <ConditionBuilder
+              value={formData.eventTypeCondition}
+              onChange={(condition) => setFormData({ ...formData, eventTypeCondition: condition })}
+            />
+          </div>
 
-          <DialogFooter>
+          <div className="space-y-2">
+            <Label>Event Version Condition (Optional)</Label>
+            <ConditionBuilder
+              value={formData.eventVersionCondition || defaultCondition}
+              onChange={(condition) => setFormData({ ...formData, eventVersionCondition: condition })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Input
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -189,7 +126,7 @@ export function RuleDialog({ open, onOpenChange, onSave, initialData }: RuleDial
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : 'Save'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
