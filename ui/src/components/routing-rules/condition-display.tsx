@@ -15,9 +15,9 @@ interface Condition {
 }
 
 const operatorColors = {
-  and: 'bg-blue-100 text-blue-800',
-  or: 'bg-green-100 text-green-800',
-  not: 'bg-red-100 text-red-800',
+  and: 'bg-blue-100 text-blue-800 border-blue-200',
+  or: 'bg-green-100 text-green-800 border-green-200',
+  not: 'bg-red-100 text-red-800 border-red-200',
 } as const;
 
 const expressionColors = {
@@ -39,50 +39,65 @@ function formatExpressionType(type: string): string {
 
 interface ConditionDisplayProps {
   condition: Condition;
+  level?: number;
 }
 
-export function ConditionDisplay({ condition }: ConditionDisplayProps) {
+export function ConditionDisplay({ condition, level = 0 }: ConditionDisplayProps) {
   // Handle leaf nodes (string expressions)
   if (condition.type && condition.value) {
     return (
-      <Badge variant="secondary" className={expressionColors[condition.type as keyof typeof expressionColors]}>
-        {formatExpressionType(condition.type)}: {condition.value}
-      </Badge>
+      <div className="rounded-md border p-2 bg-white shadow-sm">
+        <Badge variant="secondary" className={expressionColors[condition.type as keyof typeof expressionColors]}>
+          {formatExpressionType(condition.type)}: {condition.value}
+        </Badge>
+      </div>
     );
   }
 
   // Handle logical operators
   if (condition.and) {
     return (
-      <div className="flex flex-wrap gap-1 items-center">
-        {condition.and.map((subCond, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <Badge variant="secondary" className={operatorColors.and}>AND</Badge>}
-            <ConditionDisplay condition={subCond} />
-          </React.Fragment>
-        ))}
+      <div className="rounded-md border border-blue-200 bg-white shadow-sm">
+        <div className="flex items-center gap-2 p-2 border-b border-blue-200 bg-blue-50 rounded-t-md">
+          <Badge variant="secondary" className={operatorColors.and}>AND</Badge>
+        </div>
+        <div className="p-3 space-y-2">
+          {condition.and.map((subCond, index) => (
+            <div key={index}>
+              <ConditionDisplay condition={subCond} level={level + 1} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (condition.or) {
     return (
-      <div className="flex flex-wrap gap-1 items-center">
-        {condition.or.map((subCond, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <Badge variant="secondary" className={operatorColors.or}>OR</Badge>}
-            <ConditionDisplay condition={subCond} />
-          </React.Fragment>
-        ))}
+      <div className="rounded-md border border-green-200 bg-white shadow-sm">
+        <div className="flex items-center gap-2 p-2 border-b border-green-200 bg-green-50 rounded-t-md">
+          <Badge variant="secondary" className={operatorColors.or}>OR</Badge>
+        </div>
+        <div className="p-3 space-y-2">
+          {condition.or.map((subCond, index) => (
+            <div key={index}>
+              <ConditionDisplay condition={subCond} level={level + 1} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (condition.not) {
     return (
-      <div className="flex flex-wrap gap-1 items-center">
-        <Badge variant="secondary" className={operatorColors.not}>NOT</Badge>
-        <ConditionDisplay condition={condition.not} />
+      <div className="rounded-md border border-red-200 bg-white shadow-sm">
+        <div className="flex items-center gap-2 p-2 border-b border-red-200 bg-red-50 rounded-t-md">
+          <Badge variant="secondary" className={operatorColors.not}>NOT</Badge>
+        </div>
+        <div className="p-3">
+          <ConditionDisplay condition={condition.not} level={level + 1} />
+        </div>
       </div>
     );
   }
