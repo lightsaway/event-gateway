@@ -12,7 +12,7 @@ use axum::{
     body::Body,
     extract::{Extension, State},
     response::Response,
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use futures::Future;
@@ -107,6 +107,7 @@ pub async fn app_router(
         .route("/event", post(handle_event))
         .route("/routing-rules", get(read_rules))
         .route("/routing-rules", post(create_routing_rule))
+        .route("/routing-rules/:id", put(update_routing_rule))
         .route("/routing-rules/:id", delete(delete_routing_rule))
         .route("/topic-validations", get(read_topic_validations))
         .route("/topic-validations", post(create_topic_validation))
@@ -218,6 +219,26 @@ async fn create_routing_rule(
         description: request.description,
     };
     let result = service.add_routing_rule(&rule).await;
+    match result {
+        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
+        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+    }
+}
+
+async fn update_routing_rule(
+    State(service): State<Arc<EventGateway>>,
+    Path(id): Path<Uuid>,
+    Json(request): Json<CreateRoutingRuleRequest>,
+) -> Result<Response, Response> {
+    let rule = TopicRoutingRule {
+        id,
+        order: request.order,
+        topic: request.topic,
+        event_type_condition: request.event_type_condition,
+        event_version_condition: request.event_version_condition,
+        description: request.description,
+    };
+    let result = service.update_routing_rule(id, &rule).await;
     match result {
         Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
         Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),

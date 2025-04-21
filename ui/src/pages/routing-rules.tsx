@@ -81,9 +81,9 @@ export default function RoutingRulesPage() {
 
   if (error) {
     return (
-      <div className="p-4 text-red-500">
-        Error: {error}
-        <Button onClick={loadRules} className="ml-2">
+      <div className="flex flex-col items-center justify-center min-h-[200px] p-4">
+        <div className="text-red-500 mb-4">Error: {error}</div>
+        <Button onClick={loadRules}>
           Retry
         </Button>
       </div>

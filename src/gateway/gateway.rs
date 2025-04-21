@@ -24,6 +24,7 @@ pub trait GateWay {
     async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), GatewayError>;
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), GatewayError>;
     async fn add_routing_rule(&self, rule: &TopicRoutingRule) -> Result<(), GatewayError>;
+    async fn update_routing_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), GatewayError>;
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError>;
     async fn delete_routing_rule(&self, id: &Uuid) -> Result<(), GatewayError>;
 
@@ -144,6 +145,10 @@ impl GateWay for EventGateway {
 
     async fn add_routing_rule(&self, rule: &TopicRoutingRule) -> Result<(), GatewayError> {
         self.store.add_rule(rule).await.map_err(GatewayError::from)
+    }
+
+    async fn update_routing_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), GatewayError> {
+        self.store.update_rule(id, rule).await.map_err(GatewayError::from)
     }
 
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError> {

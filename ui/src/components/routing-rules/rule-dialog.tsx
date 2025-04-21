@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,6 +35,26 @@ export function RuleDialog({ open, onOpenChange, onSave, initialData }: RuleDial
         }
       : undefined,
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        order: initialData.order,
+        topic: initialData.topic,
+        description: initialData.description ?? '',
+        eventTypeCondition: {
+          type: 'equals',
+          value: initialData.eventTypeCondition.value,
+        },
+        eventVersionCondition: initialData.eventVersionCondition
+          ? {
+              type: 'equals',
+              value: initialData.eventVersionCondition.value,
+            }
+          : undefined,
+      });
+    }
+  }, [initialData]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
