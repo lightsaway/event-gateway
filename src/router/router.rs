@@ -68,6 +68,7 @@ mod tests {
             event_version: None,
             data: Data::String("".to_string()),
             data_type: None,
+            transport_metadata: None,
             metadata: Default::default(),
             origin: None,
             timestamp: None,
@@ -111,6 +112,7 @@ mod tests {
             data: Data::String("".to_string()),
             data_type: None,
             metadata: Default::default(),
+            transport_metadata: None,
             origin: None,
             timestamp: None,
         };

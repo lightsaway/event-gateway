@@ -43,12 +43,14 @@ impl PartialEq for StringExpression {
 }
 
 #[derive(Clone, Serialize, PartialEq,Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(
+    rename_all = "lowercase",
+)]
 pub enum Condition {
     AND(Vec<Condition>),
     OR(Vec<Condition>),
     NOT(Box<Condition>),
-    ANY(),
+    ANY,
     #[serde(untagged)]
     ONE(StringExpression),
 }
@@ -73,7 +75,7 @@ where
 impl Condition {
     pub fn matches(&self, to: &str) -> bool {
         match self {
-            Condition::ANY() => true,
+            Condition::ANY => true,
             Condition::ONE(expr) => match expr {
                 StringExpression::RegexMatch { value } => value.is_match(to),
                 StringExpression::Equals { value } => value == to,
@@ -95,9 +97,138 @@ mod tests {
 
     #[test]
     fn test_any_match() {
-        let condition = Condition::ANY();
+        let condition = Condition::ANY;
         assert!(condition.matches("test123"));
         assert!(condition.matches("random"));
+    }
+
+    #[test]
+    fn test_serialization_deserialization() {
+        // Test ANY condition
+        let any_condition = Condition::ANY;
+        let serialized = serde_json::to_string(&any_condition).expect("Failed to serialize ANY condition");
+        assert_eq!(serialized, r#""any""#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize ANY condition");
+        assert!(matches!(deserialized, Condition::ANY));
+
+        // Test Equals condition
+        let equals_condition = Condition::ONE(StringExpression::Equals {
+            value: "test".to_string(),
+        });
+        let serialized = serde_json::to_string(&equals_condition).expect("Failed to serialize Equals condition");
+        assert_eq!(serialized, r#"{"type":"equals","value":"test"}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize Equals condition");
+        assert!(matches!(deserialized, Condition::ONE(StringExpression::Equals { value }) if value == "test"));
+
+        // Test RegexMatch condition
+        let regex = Regex::new("^test.*").unwrap();
+        let regex_condition = Condition::ONE(StringExpression::RegexMatch { value: regex });
+        let serialized = serde_json::to_string(&regex_condition).expect("Failed to serialize RegexMatch condition");
+        assert_eq!(serialized, r#"{"type":"regexMatch","value":"^test.*"}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize RegexMatch condition");
+        assert!(matches!(deserialized, Condition::ONE(StringExpression::RegexMatch { value }) if value.as_str() == "^test.*"));
+
+        // Test StartsWith condition
+        let starts_with_condition = Condition::ONE(StringExpression::StartsWith {
+            value: "test".to_string(),
+        });
+        let serialized = serde_json::to_string(&starts_with_condition).expect("Failed to serialize StartsWith condition");
+        assert_eq!(serialized, r#"{"type":"startsWith","value":"test"}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize StartsWith condition");
+        assert!(matches!(deserialized, Condition::ONE(StringExpression::StartsWith { value }) if value == "test"));
+
+        // Test EndsWith condition
+        let ends_with_condition = Condition::ONE(StringExpression::EndsWith {
+            value: "test".to_string(),
+        });
+        let serialized = serde_json::to_string(&ends_with_condition).expect("Failed to serialize EndsWith condition");
+        assert_eq!(serialized, r#"{"type":"endsWith","value":"test"}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize EndsWith condition");
+        assert!(matches!(deserialized, Condition::ONE(StringExpression::EndsWith { value }) if value == "test"));
+
+        // Test Contains condition
+        let contains_condition = Condition::ONE(StringExpression::Contains {
+            value: "test".to_string(),
+        });
+        let serialized = serde_json::to_string(&contains_condition).expect("Failed to serialize Contains condition");
+        assert_eq!(serialized, r#"{"type":"contains","value":"test"}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize Contains condition");
+        assert!(matches!(deserialized, Condition::ONE(StringExpression::Contains { value }) if value == "test"));
+
+        // Test AND condition
+        let and_condition = Condition::AND(vec![
+            Condition::ONE(StringExpression::Equals {
+                value: "test1".to_string(),
+            }),
+            Condition::ONE(StringExpression::Equals {
+                value: "test2".to_string(),
+            }),
+        ]);
+        let serialized = serde_json::to_string(&and_condition).expect("Failed to serialize AND condition");
+        assert_eq!(serialized, r#"{"and":[{"type":"equals","value":"test1"},{"type":"equals","value":"test2"}]}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize AND condition");
+        assert!(matches!(deserialized, Condition::AND(conditions) if conditions.len() == 2));
+
+        // Test OR condition
+        let or_condition = Condition::OR(vec![
+            Condition::ONE(StringExpression::Equals {
+                value: "test1".to_string(),
+            }),
+            Condition::ONE(StringExpression::Equals {
+                value: "test2".to_string(),
+            }),
+        ]);
+        let serialized = serde_json::to_string(&or_condition).expect("Failed to serialize OR condition");
+        assert_eq!(serialized, r#"{"or":[{"type":"equals","value":"test1"},{"type":"equals","value":"test2"}]}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize OR condition");
+        assert!(matches!(deserialized, Condition::OR(conditions) if conditions.len() == 2));
+
+        // Test NOT condition
+        let not_condition = Condition::NOT(Box::new(Condition::ONE(StringExpression::Equals {
+            value: "test".to_string(),
+        })));
+        let serialized = serde_json::to_string(&not_condition).expect("Failed to serialize NOT condition");
+        assert_eq!(serialized, r#"{"not":{"type":"equals","value":"test"}}"#);
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize NOT condition");
+        assert!(matches!(deserialized, Condition::NOT(_)));
+    }
+
+    #[test]
+    fn test_complex_condition_serialization() {
+        // Test a complex condition with nested AND, OR, and NOT
+        let complex_condition = Condition::AND(vec![
+            Condition::OR(vec![
+                Condition::ONE(StringExpression::Equals {
+                    value: "test1".to_string(),
+                }),
+                Condition::NOT(Box::new(Condition::ONE(StringExpression::Equals {
+                    value: "test2".to_string(),
+                }))),
+            ]),
+            Condition::ONE(StringExpression::StartsWith {
+                value: "prefix".to_string(),
+            }),
+        ]);
+
+        let serialized = serde_json::to_string(&complex_condition).expect("Failed to serialize complex condition");
+        let deserialized: Condition = serde_json::from_str(&serialized).expect("Failed to deserialize complex condition");
+        
+        // Verify the structure matches
+        match deserialized {
+            Condition::AND(conditions) => {
+                assert_eq!(conditions.len(), 2);
+                match &conditions[0] {
+                    Condition::OR(or_conditions) => {
+                        assert_eq!(or_conditions.len(), 2);
+                        assert!(matches!(&or_conditions[0], Condition::ONE(StringExpression::Equals { value }) if value == "test1"));
+                        assert!(matches!(&or_conditions[1], Condition::NOT(_)));
+                    }
+                    _ => panic!("Expected OR condition"),
+                }
+                assert!(matches!(&conditions[1], Condition::ONE(StringExpression::StartsWith { value }) if value == "prefix"));
+            }
+            _ => panic!("Expected AND condition"),
+        }
     }
 
     #[test]

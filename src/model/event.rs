@@ -97,6 +97,7 @@ mod tests {
             event_type: "test_type".to_string(),
             event_version: Some("1.0".to_string()),
             metadata,
+            transport_metadata: None,
             data_type: Some(DataType::Json),
             data: Data::Json(data_json.as_object().unwrap().clone().into_iter().collect()),
             timestamp: Some(timestamp),
