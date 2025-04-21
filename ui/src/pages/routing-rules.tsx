@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Pencil, Trash2 } from 'lucide-react';
 import { RuleDialog } from '@/components/routing-rules/rule-dialog';
-import { ConditionDisplay } from '@/components/routing-rules/condition-display';
+import { ConditionTextDisplay } from '@/components/routing-rules/condition-text-display';
 
 export default function RoutingRulesPage() {
   const [rules, setRules] = useState<TopicRoutingRule[]>([]);
@@ -115,11 +115,11 @@ export default function RoutingRulesPage() {
               <TableCell>{rule.order}</TableCell>
               <TableCell>{rule.topic}</TableCell>
               <TableCell>
-                <ConditionDisplay condition={rule.eventTypeCondition} />
+                <ConditionTextDisplay condition={rule.eventTypeCondition} />
               </TableCell>
               <TableCell>
                 {rule.eventVersionCondition ? (
-                  <ConditionDisplay condition={rule.eventVersionCondition} />
+                  <ConditionTextDisplay condition={rule.eventVersionCondition} />
                 ) : (
                   '-'
                 )}

@@ -7,7 +7,7 @@ test:
 	@cargo test -- --show-output
 
 prod:
-	@cargo build --release
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 cargo build --release
 
 run-prod:
 	@RUST_LOG=info ./target/release/event-gateway
