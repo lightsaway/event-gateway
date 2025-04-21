@@ -5,6 +5,8 @@ export interface DataSchema {
   name: string;
   schema: string;
   description?: string;
+  event_type: string;
+  event_version: string;
 }
 
 export interface TopicValidationConfig {

@@ -10,6 +10,7 @@ import { Uuid } from '../types/common';
 import { Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from "@/hooks/use-toast"
+import { ValidationDialog } from '@/components/topic-validations/validation-dialog';
 
 export default function TopicValidationsPage() {
   const { toast } = useToast()
@@ -23,6 +24,8 @@ export default function TopicValidationsPage() {
       name: '',
       schema: '',
       description: '',
+      event_type: '',
+      event_version: '',
     },
   });
 
@@ -39,22 +42,21 @@ export default function TopicValidationsPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (validation: Omit<TopicValidationConfig, 'id'>) => {
     try {
-      await createValidation(formData);
+      await createValidation(validation);
       toast({
         title: "Success",
         description: "Validation schema created successfully",
       });
-      setIsDialogOpen(false);
-      loadValidations();
+      await loadValidations();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to create validation schema",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -97,9 +99,13 @@ export default function TopicValidationsPage() {
                       <CollapsibleTrigger className="flex-1 text-left">
                         <div className="p-4">
                           <h3 className="font-medium">{schema.name}</h3>
-                          {schema.description && (
-                            <p className="text-sm text-gray-500">{schema.description}</p>
-                          )}
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {schema.description && (
+                              <p>{schema.description}</p>
+                            )}
+                            <p>Event Type: {schema.event_type}</p>
+                            <p>Event Version: {schema.event_version}</p>
+                          </div>
                         </div>
                       </CollapsibleTrigger>
                       <div className="p-4">
@@ -127,65 +133,12 @@ export default function TopicValidationsPage() {
         ))}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Topic Validation</DialogTitle>
-            <DialogDescription>
-              Create a new validation schema for a topic
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="topic">Topic</Label>
-              <Input
-                id="topic"
-                value={formData.topic}
-                onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="schemaName">Schema Name</Label>
-              <Input
-                id="schemaName"
-                value={formData.schema.name}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  schema: { ...formData.schema, name: e.target.value },
-                })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="schema">Schema</Label>
-              <Textarea
-                id="schema"
-                value={formData.schema.schema}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  schema: { ...formData.schema, schema: e.target.value },
-                })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.schema.description}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  schema: { ...formData.schema, description: e.target.value },
-                })}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Create</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ValidationDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSave={handleSave}
+        onSuccess={loadValidations}
+      />
     </div>
   );
 } 

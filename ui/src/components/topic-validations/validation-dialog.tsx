@@ -18,25 +18,32 @@ interface ValidationDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (validation: Omit<TopicValidationConfig, 'id'>) => Promise<void>;
   initialData?: TopicValidationConfig;
+  onSuccess?: () => void;
 }
 
-export function ValidationDialog({ open, onOpenChange, onSave, initialData }: ValidationDialogProps) {
+export function ValidationDialog({ open, onOpenChange, onSave, initialData, onSuccess }: ValidationDialogProps) {
   const [formData, setFormData] = useState({
     topic: initialData?.topic ?? '',
-    schemas: initialData?.schemas ?? [],
-  });
-
-  const [newSchema, setNewSchema] = useState({
-    name: '',
-    schema: '',
-    description: '',
+    schema: {
+      name: initialData?.schema.name ?? '',
+      schema: initialData?.schema.schema ?? '',
+      description: initialData?.schema.description ?? '',
+      event_type: initialData?.schema.event_type ?? '',
+      event_version: initialData?.schema.event_version ?? '',
+    },
   });
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         topic: initialData.topic,
-        schemas: initialData.schemas,
+        schema: {
+          name: initialData.schema.name,
+          schema: initialData.schema.schema,
+          description: initialData.schema.description ?? '',
+          event_type: initialData.schema.event_type,
+          event_version: initialData.schema.event_version,
+        },
       });
     }
   }, [initialData]);
@@ -44,45 +51,33 @@ export function ValidationDialog({ open, onOpenChange, onSave, initialData }: Va
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleAddSchema() {
-    if (!newSchema.name || !newSchema.schema) {
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      schemas: [
-        ...formData.schemas,
-        {
-          id: crypto.randomUUID(),
-          name: newSchema.name,
-          schema: newSchema.schema,
-          description: newSchema.description || undefined,
-        },
-      ],
-    });
-
-    setNewSchema({
-      name: '',
-      schema: '',
-      description: '',
-    });
-  }
-
-  function handleRemoveSchema(id: string) {
-    setFormData({
-      ...formData,
-      schemas: formData.schemas.filter((schema) => schema.id !== id),
-    });
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
       setLoading(true);
       setError(null);
-      await onSave(formData);
+      console.log(formData.schema.schema);
+      
+      // Format the schema correctly to match the add_topic_validations.sh script
+      const formattedSchema = {
+        topic: formData.topic,
+        schema: {
+          id: initialData?.schema.id ?? crypto.randomUUID(),
+          name: formData.schema.name,
+          description: formData.schema.description || undefined,
+          schema: {
+            type: 'json',
+            data: JSON.parse(formData.schema.schema)
+          },
+          event_type: formData.schema.event_type,
+          event_version: formData.schema.event_version,
+          metadata: {}
+        },
+      };
+      
+      await onSave(formattedSchema);
       onOpenChange(false);
+      onSuccess?.();
     } catch (err) {
       setError('Failed to save validation');
       console.error(err);
@@ -119,100 +114,93 @@ export function ValidationDialog({ open, onOpenChange, onSave, initialData }: Va
               />
             </div>
 
-            <div className="col-span-4">
-              <h3 className="text-lg font-medium mb-2">Schemas</h3>
-              <div className="space-y-4">
-                {formData.schemas.map((schema) => (
-                  <div
-                    key={schema.id}
-                    className="p-4 border rounded-lg space-y-2"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{schema.name}</h4>
-                        {schema.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {schema.description}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSchema(schema.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <pre className="bg-muted p-2 rounded text-sm overflow-x-auto">
-                      {schema.schema}
-                    </pre>
-                  </div>
-                ))}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="schemaName" className="text-right">
+                Schema Name
+              </Label>
+              <Input
+                id="schemaName"
+                value={formData.schema.name}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    schema: { ...formData.schema, name: e.target.value },
+                  })
+                }
+                className="col-span-3"
+              />
+            </div>
 
-                <div className="border rounded-lg p-4 space-y-4">
-                  <h4 className="font-medium">Add New Schema</h4>
-                  <div className="grid gap-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="schemaName" className="text-right">
-                        Name
-                      </Label>
-                      <Input
-                        id="schemaName"
-                        value={newSchema.name}
-                        onChange={(e) =>
-                          setNewSchema({ ...newSchema, name: e.target.value })
-                        }
-                        className="col-span-3"
-                      />
-                    </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="eventType" className="text-right">
+                Event Type
+              </Label>
+              <Input
+                id="eventType"
+                value={formData.schema.event_type}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    schema: { ...formData.schema, event_type: e.target.value },
+                  })
+                }
+                className="col-span-3"
+                placeholder="e.g., user.created"
+              />
+            </div>
 
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="schemaDescription" className="text-right">
-                        Description
-                      </Label>
-                      <Input
-                        id="schemaDescription"
-                        value={newSchema.description}
-                        onChange={(e) =>
-                          setNewSchema({
-                            ...newSchema,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder="Optional"
-                        className="col-span-3"
-                      />
-                    </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="eventVersion" className="text-right">
+                Event Version
+              </Label>
+              <Input
+                id="eventVersion"
+                value={formData.schema.event_version}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    schema: { ...formData.schema, event_version: e.target.value },
+                  })
+                }
+                className="col-span-3"
+                placeholder="e.g., 1.0"
+              />
+            </div>
 
-                    <div className="grid grid-cols-4 items-start gap-4">
-                      <Label htmlFor="schemaContent" className="text-right pt-2">
-                        Schema
-                      </Label>
-                      <Textarea
-                        id="schemaContent"
-                        value={newSchema.schema}
-                        onChange={(e) =>
-                          setNewSchema({ ...newSchema, schema: e.target.value })
-                        }
-                        className="col-span-3 h-32 font-mono"
-                        placeholder="Enter JSON schema"
-                      />
-                    </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="schemaDescription" className="text-right">
+                Description
+              </Label>
+              <Input
+                id="schemaDescription"
+                value={formData.schema.description}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    schema: { ...formData.schema, description: e.target.value },
+                  })
+                }
+                placeholder="Optional"
+                className="col-span-3"
+              />
+            </div>
 
-                    <div className="col-span-4 flex justify-end">
-                      <Button
-                        type="button"
-                        onClick={handleAddSchema}
-                        disabled={!newSchema.name || !newSchema.schema}
-                      >
-                        Add Schema
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="schemaContent" className="text-right pt-2">
+                Schema
+              </Label>
+              <Textarea
+                id="schemaContent"
+                value={formData.schema.schema}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    schema: { ...formData.schema, schema: e.target.value },
+                  })
+                }
+                className="col-span-3 h-32 font-mono"
+                placeholder="Enter JSON schema"
+              />
             </div>
           </div>
 
