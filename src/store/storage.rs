@@ -48,11 +48,11 @@ pub trait Storage: Send + Sync {
     async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError>;
 
     async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError>;
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError>;
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError>;
 
     async fn get_validations_for_topic(&self, topic: &str) -> Result<Vec<DataSchema>, StorageError> {
         let validations = self.get_all_topic_validations().await?;
-        Ok(validations.get(topic).cloned().unwrap_or_default())
+        Ok(validations.get(topic).map(|configs| configs.iter().map(|c| c.schema.clone()).collect()).unwrap_or_default())
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError>;
@@ -61,7 +61,7 @@ pub trait Storage: Send + Sync {
 #[derive(Deserialize)]
 pub struct InMemoryStorage {
     routing_rules: Vec<TopicRoutingRule>,
-    topic_validations: HashMap<String, Vec<DataSchema>>,
+    topic_validations: HashMap<String, Vec<TopicValidationConfig>>,
 }
 
 impl InMemoryStorage {
@@ -79,7 +79,7 @@ impl InMemoryStorage {
 
     pub fn with_initial_topic_validations(
         mut self,
-        validations: HashMap<String, Vec<DataSchema>>,
+        validations: HashMap<String, Vec<TopicValidationConfig>>,
     ) -> Self {
         self.topic_validations = validations;
         self
@@ -112,7 +112,7 @@ impl Storage for InMemoryStorage {
         todo!()
     }
 
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
         Ok(self.topic_validations.clone())
     }
 

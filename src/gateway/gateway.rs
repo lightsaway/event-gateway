@@ -29,7 +29,7 @@ pub trait GateWay {
     async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), GatewayError>;
     async fn get_topic_validations(
         &self,
-    ) -> Result<HashMap<String, Vec<DataSchema>>, GatewayError>;
+    ) -> Result<HashMap<String, Vec<TopicValidationConfig>>, GatewayError>;
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), GatewayError>;
 }
 
@@ -164,10 +164,11 @@ impl GateWay for EventGateway {
 
     async fn get_topic_validations(
         &self,
-    ) -> Result<HashMap<String, Vec<DataSchema>>, GatewayError> {
+    ) -> Result<HashMap<String, Vec<TopicValidationConfig>>, GatewayError> {
         self.store
             .get_all_topic_validations()
             .await
             .map_err(GatewayError::from)
     }
 }
+

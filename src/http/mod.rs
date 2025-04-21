@@ -193,18 +193,28 @@ async fn handle_event(
     event.transport_metadata = Some(transport_meta);
     let result = service.handle(&event).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(200).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
         Err(err) => match err {
             crate::gateway::gateway::GatewayError::SchemaInvalid(err) => Ok(Response::builder()
                 .status(400)
+                .header("Content-Type", "application/json")
                 .body(Body::from(r#"{"error": "schema validation failed"}"#))
                 .unwrap()),
             crate::gateway::gateway::GatewayError::NoTopicToRoute(err) => Ok(Response::builder()
                 .status(406)
+                .header("Content-Type", "application/json")
                 .body(Body::from(r#"{"error": "no destination found"}"#))
                 .unwrap()),
             crate::gateway::gateway::GatewayError::InternalError(err) => {
-                Ok(Response::builder().status(500).body(Body::empty()).unwrap())
+                Ok(Response::builder()
+                    .status(500)
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(r#"{"error": "internal server error"}"#))
+                    .unwrap())
             }
         },
     }
@@ -224,8 +234,16 @@ async fn create_routing_rule(
     };
     let result = service.add_routing_rule(&rule).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(204)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
+        Err(err) => Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"error": "internal server error"}"#))
+            .unwrap()),
     }
 }
 
@@ -244,8 +262,16 @@ async fn update_routing_rule(
     };
     let result = service.update_routing_rule(id, &rule).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(204)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
+        Err(err) => Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"error": "internal server error"}"#))
+            .unwrap()),
     }
 }
 
@@ -255,8 +281,16 @@ async fn delete_routing_rule(
 ) -> Result<Response, Response> {
     let result = service.delete_routing_rule(&id).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(204)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
+        Err(err) => Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"error": "internal server error"}"#))
+            .unwrap()),
     }
 }
 
@@ -271,8 +305,16 @@ async fn create_topic_validation(
     };
     let result = service.add_topic_validation(&validation).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(204)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
+        Err(err) => Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"error": "internal server error"}"#))
+            .unwrap()),
     }
 }
 
@@ -296,8 +338,16 @@ async fn delete_topic_validation(
 ) -> Result<Response, Response> {
     let result = service.delete_topic_validation(&id).await;
     match result {
-        Ok(_) => Ok(Response::builder().status(204).body(Body::empty()).unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Ok(_) => Ok(Response::builder()
+            .status(204)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"status": "success"}"#))
+            .unwrap()),
+        Err(err) => Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"error": "internal server error"}"#))
+            .unwrap()),
     }
 }
 

@@ -107,7 +107,7 @@ where
 
     async fn get_topic_validations(
         &self,
-    ) -> Result<std::collections::HashMap<String, Vec<crate::model::routing::DataSchema>>, GatewayError> {
+    ) -> Result<HashMap<String, Vec<TopicValidationConfig>>, GatewayError> {
         self.gateway.get_topic_validations().await
     }
 

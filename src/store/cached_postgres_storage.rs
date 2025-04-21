@@ -20,7 +20,7 @@ pub struct CachedPostgresStorage {
     rules_cache: Arc<RwLock<Vec<TopicRoutingRule>>>,
     
     /// In-memory cache of topic validations
-    validations_cache: Arc<RwLock<HashMap<String, Vec<DataSchema>>>>,
+    validations_cache: Arc<RwLock<HashMap<String, Vec<TopicValidationConfig>>>>,
     
     /// Last time the cache was refreshed
     last_refresh: Arc<Mutex<Instant>>,
@@ -245,7 +245,7 @@ impl Storage for CachedPostgresStorage {
         self.force_refresh().await
     }
     
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
         // Check if cache needs refresh
         let needs_refresh = {
             let last_refresh = self.last_refresh.lock().unwrap();

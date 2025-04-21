@@ -117,19 +117,10 @@ impl Storage for FileStorage {
         todo!()
     }
 
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
         let _lock = self.lock.lock().unwrap();
         let dbs = self.read_database()?;
-        let validations: HashMap<String, Vec<DataSchema>> = dbs.topic_validations
-            .into_iter()
-            .map(|(topic, configs)| {
-                let schemas = configs.into_iter()
-                    .map(|config| config.schema)
-                    .collect();
-                (topic, schemas)
-            })
-            .collect();
-        Ok(validations)
+        Ok(dbs.topic_validations)
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {

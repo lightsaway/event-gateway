@@ -1,7 +1,17 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
-export function Layout() {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+export function Layout({ children }: LayoutProps) {
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
@@ -30,29 +40,41 @@ export function Layout() {
               Events
             </Link>
             <Link
-              to="/rules"
-              className={cn(
-                'flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-accent'
-              )}
+              to="/routing-rules"
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                isActive('/routing-rules')
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
             >
               Routing Rules
             </Link>
             <Link
-              to="/validations"
-              className={cn(
-                'flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-accent'
-              )}
+              to="/topic-validations"
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                isActive('/topic-validations')
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
             >
               Topic Validations
+            </Link>
+            <Link
+              to="/playground"
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                isActive('/playground')
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              }`}
+            >
+              Playground
             </Link>
           </nav>
         </aside>
 
         {/* Main content */}
         <main className="flex-1 p-8">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

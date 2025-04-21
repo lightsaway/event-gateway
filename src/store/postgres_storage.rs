@@ -194,24 +194,31 @@ impl Storage for PostgresStorage {
         Ok(())
     }
 
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<DataSchema>>, StorageError> {
+    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
         let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
         
         let stmt = client.prepare_cached(
-            "SELECT topic, schema FROM topic_validations"
+            "SELECT id, topic, schema FROM topic_validations"
         ).await?;
 
         let rows = client.query(&stmt, &[]).await?;
         
         let mut validations = HashMap::new();
         for row in rows {
+            let id: Uuid = row.get("id");
             let topic: String = row.get("topic");
             let schema: Value = row.get("schema");
             let schema: DataSchema = serde_json::from_value(schema)?;
             
+            let config = TopicValidationConfig {
+                id,
+                topic: topic.clone(),
+                schema,
+            };
+            
             validations.entry(topic)
                 .or_insert_with(Vec::new)
-                .push(schema);
+                .push(config);
         }
         
         Ok(validations)
