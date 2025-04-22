@@ -104,6 +104,9 @@ fn default_dbname() -> String {
 mod tests {
     use super::*;
     use config::{Config, ConfigError, FileFormat};
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     // Helper function to deserialize AppConfig from a string
     fn config_from_str(input: &str, format: FileFormat) -> Result<AppConfig, ConfigError> {
@@ -128,6 +131,8 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
+            sampling_enabled = true
+            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
             [api]
@@ -160,6 +165,8 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
+            sampling_enabled = true
+            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
 
@@ -193,6 +200,8 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
+            sampling_enabled = true
+            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
             [api]

@@ -84,8 +84,8 @@ mod tests {
             ..event.clone()
         };
 
-        assert_eq!(routings.route(&event).map(|r| r.topic), Some("topic_one"));
-        assert_eq!(routings.route(&event_two).map(|r| r.topic), Some("topic_two"));
+        assert_eq!(routings.route(&event).map(|r| r.topic.clone()), Some("topic_one".to_string()));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone()), Some("topic_two".to_string()));
         assert_eq!(routings.route(&event_three), None);
     }
 
@@ -129,7 +129,7 @@ mod tests {
         };
 
         assert_eq!(routings.route(&event), None);
-        assert_eq!(routings.route(&event_two).map(|r| r.topic), Some("topic"));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone()), Some("topic".to_string()));
         assert_eq!(routings.route(&event_three), None);
     }
 }

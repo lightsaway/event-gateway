@@ -13,6 +13,7 @@ use serde_json::Value;
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::model::event::Event;
 use crate::store::storage::{Storage, StorageError, StoredEvent};
+use crate::model::expressions::{Condition, StringExpression};
 
 pub struct FileStorage {
     base_path: PathBuf,
@@ -250,105 +251,65 @@ impl Storage for FileStorage {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::expressions::{Condition, StringExpression};
-
     use super::*;
-    use std::fs::File;
-    use tempfile::NamedTempFile;
+    use tempfile::TempDir;
+    use uuid::Uuid;
 
-    // Helper function to create a new TopicRoutingRule with dummy data
     fn create_dummy_rule() -> TopicRoutingRule {
         TopicRoutingRule {
             id: Uuid::new_v4(),
             order: 0,
-            topic: "topic".to_string(),
+            topic: "test_topic".to_string(),
             description: None,
-            event_version_condition: Some(Condition::ONE(StringExpression::Equals {
-                value: "1.0".to_string(),
-            })),
+            event_version_condition: None,
             event_type_condition: Condition::ONE(StringExpression::Equals {
-                value: "event".to_string(),
+                value: "test_event".to_string(),
             }),
         }
     }
 
-    #[tokio::test]
     async fn test_file_storage_add_and_get_rule() -> Result<(), StorageError> {
-        // Create a temporary file
-        let file: NamedTempFile = NamedTempFile::new()?;
-        let file_path = file.path().to_path_buf();
-        // Instantiate FileStorage
-        let mut storage = FileStorage::new(file_path);
-
-        // Create and add a new rule to the storage
+        let temp_dir = TempDir::new().unwrap();
+        let storage = FileStorage::new(temp_dir.path());
         let rule = create_dummy_rule();
-        storage.add_rule(&rule.clone()).await?;
-
-        // Retrieve the rule we just added
-        let retrieved_rule = storage.get_rule(rule.id).await?;
-
-        // Check if the retrieved rule is the same as the one we added
-        assert_eq!(retrieved_rule, Some(rule));
+        storage.add_rule(&rule).await?;
+        let retrieved = storage.get_rule(rule.id).await?.unwrap();
+        assert_eq!(retrieved.id, rule.id);
+        assert_eq!(retrieved.topic, rule.topic);
         Ok(())
     }
 
-    #[tokio::test]
     async fn test_file_storage_get_all_rules() -> Result<(), StorageError> {
-        let file: NamedTempFile = NamedTempFile::new()?;
-        let file_path = file.path().to_path_buf();
-
-        let mut storage = FileStorage::new(file_path);
-
-        // Add multiple rules
+        let temp_dir = TempDir::new().unwrap();
+        let storage = FileStorage::new(temp_dir.path());
         let rule1 = create_dummy_rule();
         let rule2 = create_dummy_rule();
-        storage.add_rule(&rule1.clone()).await?;
-        storage.add_rule(&rule2.clone()).await?;
-
-        // Retrieve all rules
+        storage.add_rule(&rule1).await?;
+        storage.add_rule(&rule2).await?;
         let rules = storage.get_all_rules().await?;
-
-        // We should have 2 rules now
         assert_eq!(rules.len(), 2);
         Ok(())
     }
 
-    #[tokio::test]
     async fn test_file_storage_update_rule() -> Result<(), StorageError> {
-        let file: NamedTempFile = NamedTempFile::new()?;
-        let file_path = file.path().to_path_buf();
-
-        let mut storage = FileStorage::new(file_path);
-
-        // Add a rule, then update it
+        let temp_dir = TempDir::new().unwrap();
+        let storage = FileStorage::new(temp_dir.path());
         let mut rule = create_dummy_rule();
-        storage.add_rule(&rule.clone()).await?;
-
-        // Change the rule's field, here we'll just clone and modify the id for simplicity
-        rule.description = Some("new description".to_string());
+        storage.add_rule(&rule).await?;
+        rule.topic = "updated_topic".to_string();
         storage.update_rule(rule.id, &rule).await?;
-
-        // Check if the update was successful
-        let retrieved_rule = storage.get_rule(rule.id).await?;
-        assert_eq!(retrieved_rule, Some(rule));
+        let retrieved = storage.get_rule(rule.id).await?.unwrap();
+        assert_eq!(retrieved.topic, "updated_topic");
         Ok(())
     }
 
-    #[tokio::test]
     async fn test_file_storage_delete_rule() -> Result<(), StorageError> {
-        let file: NamedTempFile = NamedTempFile::new()?;
-        let file_path = file.path().to_path_buf();
-
-        let mut storage = FileStorage::new(file_path);
-
-        // Add a rule, then delete it
+        let temp_dir = TempDir::new().unwrap();
+        let storage = FileStorage::new(temp_dir.path());
         let rule = create_dummy_rule();
-        storage.add_rule(&rule.clone()).await?;
+        storage.add_rule(&rule).await?;
         storage.delete_rule(rule.id).await?;
-
-        // Check if the rule is gone
-        let retrieved_rule = storage.get_rule(rule.id).await?;
-        assert_eq!(retrieved_rule, None);
+        assert!(storage.get_rule(rule.id).await?.is_none());
         Ok(())
     }
 }

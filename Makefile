@@ -4,7 +4,8 @@ dev: frontend-dev
 	@cargo watch -x build
 
 test:
-	@cargo test -- --show-output
+	@mkdir -p ui/dist
+	@CMAKE_POLICY_VERSION_MINIMUM=3.5 cargo test -- --show-output
 
 prod: frontend-build
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 cargo build --release
@@ -56,7 +57,7 @@ frontend-dev:
 	cd ui && npm run dev
 
 frontend-build:
-	cd ui && npm run build
+	cd ui && npm install && npm run build
 
 frontend-clean:
 	rm -rf ui/dist
