@@ -257,6 +257,13 @@ Event Gateway follows a modular architecture:
 - **Storage**: Manages routing rules and topic validations
 - **Validator**: Validates event data against schemas
 
+## TODO
+
+- enable BASE_PATH propagation to FE during serving
+- make UI page for showing events samples
+- plugin metered backend for prometheus
+- test MQTT routing
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
