@@ -15,6 +15,10 @@ run-prod: frontend-build
 run-postgres:
 	@CMAKE_POLICY_VERSION_MINIMUM=3.5 APP_CONFIG_PATH=config-postgres.toml RUST_LOG=info cargo run
 
+run-prod-postgres:
+	@RUST_LOG=info APP_CONFIG_PATH=config-postgres.toml ./target/release/event-gateway
+
+
 post_event:
 	curl -v -X POST -H "Content-Type: application/json" -d '{ \
 		"id": "123e4567-e89b-12d3-a456-426614174000", \

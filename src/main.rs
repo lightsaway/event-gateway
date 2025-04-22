@@ -6,6 +6,7 @@ mod model;
 mod publisher;
 mod router;
 mod store;
+mod ui;
 
 use std::{
     net::{IpAddr, SocketAddr},
@@ -43,6 +44,7 @@ use store::{
 use crate::gateway::gateway::EventGateway;
 use crate::gateway::gateway::GateWay;
 use crate::publisher::mqtt_publisher::MqttPublisher;
+use crate::ui::static_handler;
 
 async fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
     match config {
@@ -110,7 +112,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })?;
     let service = Arc::new(gateway);
     info!("Loaded Gateway");
-    let app = app_router(service, &app_config.api).await;
+
+    let base_router = app_router(service, &app_config.api).await;
+    let app = Router::new()
+        .merge(base_router)
+        .fallback(static_handler);
+
     let ip = app_config.server.host.parse::<IpAddr>().unwrap();
     let addr = SocketAddr::from((ip, app_config.server.port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
