@@ -260,9 +260,13 @@ Event Gateway follows a modular architecture:
 ## TODO
 
 - enable BASE_PATH propagation to FE during serving
-- make UI page for showing events samples
+- make UI page for showing event samples
 - plugin metered backend for prometheus
 - test MQTT routing
+- add RabbitMQ publisher
+- add jwt secret configuration option
+- add auth header or separate endpoint to test event
+- test event routing should also return topic
 
 ## License
 
