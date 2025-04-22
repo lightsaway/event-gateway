@@ -1,5 +1,3 @@
-import { Uuid } from './common';
-
 export type DataType = 'string' | 'json' | 'binary';
 
 export interface Event {

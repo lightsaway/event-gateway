@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAllValidations, createValidation, deleteValidation, TopicValidationConfig, DataSchema } from '../services/topic-validations';
+import { getAllValidations, createValidation, deleteValidation, TopicValidationConfig } from '../services/topic-validations';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Trash2 } from 'lucide-react';
@@ -43,7 +43,7 @@ export default function TopicValidationsPage() {
     }
   };
 
-  const handleDelete = async (topic: string, schemaId: string) => {
+  const handleDelete = async (_: string, schemaId: string) => {
     try {
       await deleteValidation(schemaId);
       toast({

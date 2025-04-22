@@ -1,15 +1,15 @@
-.PHONY: loadtest
+.PHONY: loadtest frontend-dev frontend-build frontend-clean
 
-dev:
+dev: frontend-dev
 	@cargo watch -x build
 
 test:
 	@cargo test -- --show-output
 
-prod:
+prod: frontend-build
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 cargo build --release
 
-run-prod:
+run-prod: frontend-build
 	@RUST_LOG=info ./target/release/event-gateway
 
 run-postgres:
@@ -46,3 +46,16 @@ infra-run:
 
 infra-stop:
 	@docker compose stop
+
+# Frontend targets
+frontend-dev:
+	cd ui && npm run dev
+
+frontend-build:
+	cd ui && npm run build
+
+frontend-clean:
+	rm -rf ui/dist
+
+clean: frontend-clean
+	cargo clean

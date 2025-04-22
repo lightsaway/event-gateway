@@ -1,10 +1,4 @@
-import React from 'react';
 import { Badge } from '@/components/ui/badge';
-
-interface StringExpression {
-  type: 'regexMatch' | 'equals' | 'startsWith' | 'endsWith' | 'contains';
-  value: string;
-}
 
 interface Condition {
   and?: Condition[];

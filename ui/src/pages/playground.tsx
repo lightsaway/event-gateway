@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, Tabs, Table, Tag, Tooltip } from 'antd';
 import { v4 as uuidv4 } from 'uuid';
-import { Event, EventFormValues, DataType } from '../types/events';
+import { Event, EventFormValues } from '../types/events';
 import { sendEvent } from '../services/events';
 import { useToast } from "@/hooks/use-toast"
 import { Copy, Trash2 } from 'lucide-react';
@@ -159,13 +159,13 @@ const PlaygroundPage: React.FC = () => {
       title: 'Type',
       dataIndex: 'eventType',
       key: 'eventType',
-      render: (text: string, record: StoredEvent) => record.eventType || 'N/A',
+      render: (_: string, record: StoredEvent) => record.eventType || 'N/A',
     },
     {
       title: 'Version',
       dataIndex: 'eventVersion',
       key: 'eventVersion',
-      render: (text: string, record: StoredEvent) => record.eventVersion || 'N/A',
+      render: (_: string, record: StoredEvent) => record.eventVersion || 'N/A',
     },
     {
       title: 'Submitted At',

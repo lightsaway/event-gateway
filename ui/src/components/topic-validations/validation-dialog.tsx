@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { TopicValidationConfig, DataSchema } from '@/services/topic-validations';
+import { TopicValidationConfig } from '@/services/topic-validations';
 
 interface ValidationDialogProps {
   open: boolean;

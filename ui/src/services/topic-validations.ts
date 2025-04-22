@@ -3,7 +3,7 @@ import { Uuid } from '../types/common';
 export interface DataSchema {
   id: Uuid;
   name: string;
-  schema: string;
+  schema: any;
   description?: string;
   event_type: string;
   event_version: string;
