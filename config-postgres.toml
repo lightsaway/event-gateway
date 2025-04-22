@@ -14,6 +14,8 @@ cache_refresh_interval_secs = 300
 
 [gateway]
 metrics_enabled = true
+sampling_enabled = true
+sampling_threshold = 100
 [gateway.publisher]
 type = "kafka"
 brokers = ["127.0.0.1:9092"]

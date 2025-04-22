@@ -93,13 +93,22 @@ fn load_configuration() -> Result<AppConfig, String> {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let app_config = load_configuration().unwrap();
     info!("Loaded config: {}", app_config);
     let storage = load_storage(app_config.database).await;
     let publisher = load_publisher(app_config.gateway.publisher);
-    let service = Arc::new(EventGateway::new(publisher, storage).unwrap());
+    let gateway = EventGateway::new(
+        publisher,
+        storage,
+        app_config.gateway.sampling_enabled,
+        app_config.gateway.sampling_threshold,
+    ).map_err(|e| {
+        error!("Failed to create gateway: {}", e);
+        e
+    })?;
+    let service = Arc::new(gateway);
     info!("Loaded Gateway");
     let app = app_router(service, &app_config.api).await;
     let ip = app_config.server.host.parse::<IpAddr>().unwrap();
@@ -110,4 +119,5 @@ async fn main() {
         app_config.server.host, app_config.server.port
     );
     axum::serve(listener, app).await.unwrap();
+    Ok(())
 }

@@ -5,11 +5,11 @@ pub struct TopicRoutings {
 }
 
 pub trait TopicRouter {
-    fn route(&self, event: &Event) -> Option<&str>;
+    fn route(&self, event: &Event) -> Option<&TopicRoutingRule>;
 }
 
 impl TopicRouter for TopicRoutings {
-    fn route(&self, event: &Event) -> Option<&str> {
+    fn route(&self, event: &Event) -> Option<&TopicRoutingRule> {
         for rule in &self.rules {
             let type_match = rule.event_type_condition.matches(&event.event_type);
             let version_match = match (&rule.event_version_condition, &event.event_version) {
@@ -18,7 +18,7 @@ impl TopicRouter for TopicRoutings {
                 _ => false,
             };
             if type_match && version_match {
-                return Some(&rule.topic);
+                return Some(&rule);
             }
         }
         None
@@ -84,8 +84,8 @@ mod tests {
             ..event.clone()
         };
 
-        assert_eq!(routings.route(&event), Some("topic_one"));
-        assert_eq!(routings.route(&event_two), Some("topic_two"));
+        assert_eq!(routings.route(&event).map(|r| r.topic), Some("topic_one"));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic), Some("topic_two"));
         assert_eq!(routings.route(&event_three), None);
     }
 
@@ -129,7 +129,7 @@ mod tests {
         };
 
         assert_eq!(routings.route(&event), None);
-        assert_eq!(routings.route(&event_two), Some("topic"));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic), Some("topic"));
         assert_eq!(routings.route(&event_three), None);
     }
 }

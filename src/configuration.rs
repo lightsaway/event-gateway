@@ -28,6 +28,13 @@ impl fmt::Display for AppConfig {
 pub struct GatewayConfig {
     pub metrics_enabled: bool,
     pub publisher: PublisherConfig,
+    pub sampling_enabled: bool,
+    #[serde(default = "default_sampling_threshold")]
+    pub sampling_threshold: f64,
+}
+
+fn default_sampling_threshold() -> f64 {
+    100.0 // Store all events by default
 }
 
 #[derive(Debug, Deserialize)]

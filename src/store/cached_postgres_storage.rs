@@ -274,4 +274,24 @@ impl Storage for CachedPostgresStorage {
         // Force refresh cache to remove the deleted validation
         self.force_refresh().await
     }
+
+    async fn store_event(&self, event: &crate::model::event::Event, routing_id: Option<Uuid>, destination_topic: Option<String>, failure_reason: Option<String>) -> Result<(), StorageError> {
+        // Delegate to the underlying PostgresStorage
+        self.postgres.store_event(event, routing_id, destination_topic, failure_reason).await
+    }
+
+    async fn get_event(&self, id: Uuid) -> Result<Option<crate::store::storage::StoredEvent>, StorageError> {
+        // Delegate to the underlying PostgresStorage
+        self.postgres.get_event(id).await
+    }
+
+    async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<crate::store::storage::StoredEvent>, StorageError> {
+        // Delegate to the underlying PostgresStorage
+        self.postgres.get_events_by_type(event_type, limit, offset).await
+    }
+
+    async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<crate::store::storage::StoredEvent>, StorageError> {
+        // Delegate to the underlying PostgresStorage
+        self.postgres.get_events_by_routing(routing_id, limit, offset).await
+    }
 } 

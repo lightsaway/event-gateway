@@ -1,5 +1,6 @@
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
-use serde::Deserialize;
+use crate::model::event::Event;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 use std::error::Error;
@@ -7,12 +8,15 @@ use std::fmt;
 use std::io::{self};
 use uuid::Uuid;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 pub enum StorageError {
     NotFound,
     IoError(std::io::Error),
     SerializationError(serde_json::Error),
+    DatabaseError(tokio_postgres::Error),
+    PoolError(deadpool_postgres::PoolError),
 }
 
 impl Error for StorageError {}
@@ -23,6 +27,8 @@ impl fmt::Display for StorageError {
             StorageError::IoError(_) => write!(f, "connection error occurred"),
             StorageError::NotFound => write!(f, "item not found"),
             StorageError::SerializationError(_) => write!(f, "serialization error occurred"),
+            StorageError::DatabaseError(_) => write!(f, "database error occurred"),
+            StorageError::PoolError(_) => write!(f, "connection pool error occurred"),
         }
     }
 }
@@ -37,6 +43,31 @@ impl From<serde_json::Error> for StorageError {
     fn from(err: serde_json::Error) -> StorageError {
         StorageError::SerializationError(err)
     }
+}
+
+impl From<tokio_postgres::Error> for StorageError {
+    fn from(err: tokio_postgres::Error) -> StorageError {
+        StorageError::DatabaseError(err)
+    }
+}
+
+impl From<deadpool_postgres::PoolError> for StorageError {
+    fn from(err: deadpool_postgres::PoolError) -> StorageError {
+        StorageError::PoolError(err)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StoredEvent {
+    pub id: Uuid,
+    pub event_id: Uuid,
+    pub event_type: String,
+    pub event_version: Option<String>,
+    pub routing_id: Option<Uuid>,
+    pub destination_topic: Option<String>,
+    pub failure_reason: Option<String>,
+    pub stored_at: DateTime<Utc>,
+    pub event_data: serde_json::Value,
 }
 
 #[async_trait]
@@ -56,6 +87,11 @@ pub trait Storage: Send + Sync {
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError>;
+    
+    async fn store_event(&self, event: &Event, routing_id: Option<Uuid>, destination_topic: Option<String>, failure_reason: Option<String>) -> Result<(), StorageError>;
+    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError>;
+    async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError>;
+    async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError>;
 }
 
 #[derive(Deserialize)]
@@ -117,6 +153,22 @@ impl Storage for InMemoryStorage {
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
+        todo!()
+    }
+    
+    async fn store_event(&self, event: &Event, routing_id: Option<Uuid>, destination_topic: Option<String>, failure_reason: Option<String>) -> Result<(), StorageError> {
+        todo!()
+    }
+
+    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError> {
+        todo!()
+    }
+
+    async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
+        todo!()
+    }
+
+    async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
         todo!()
     }
 }

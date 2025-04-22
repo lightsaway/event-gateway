@@ -1,4 +1,6 @@
-use std::{collections::HashMap, fmt::Binary};
+use std::{collections::HashMap, fmt::Binary, sync::Arc};
+use tokio::task;
+use log::{debug, error, info};
 
 use crate::{
     model::{
@@ -12,11 +14,9 @@ use crate::{
 
 use axum::http::uri::Scheme;
 use jsonschema::{Draft, JSONSchema};
-use log::{debug, info};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 use futures::TryFutureExt;
-use std::sync::Arc;
 
 pub trait GateWay {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError>;
@@ -40,17 +40,72 @@ pub enum GatewayError {
     InternalError(String),
 }
 
+struct EventSamplingConfig {
+    enabled: bool,
+    threshold: f64,
+}
+
+impl EventSamplingConfig {
+    fn new(enabled: bool, threshold: f64) -> Self {
+        Self { enabled, threshold }
+    }
+
+    fn should_store_event(&self, event: &Event) -> bool {
+        if !self.enabled {
+            return false;
+        }
+        // Convert event ID to a number between 0 and 1
+        let id_bytes = event.id.as_bytes();
+        let hash: u32 = id_bytes.iter().fold(0, |acc, &x| acc.wrapping_add(x as u32));
+        let normalized = (hash as f64) / (u32::MAX as f64);
+        
+        // Store if the normalized value is less than the threshold percentage
+        normalized <= (self.threshold / 100.0)
+    }
+}
+
 pub struct EventGateway {
     publisher: Box<dyn Publisher<Event>>,
-    store: Box<dyn Storage>,
+    store: Arc<Box<dyn Storage>>,
+    sampling: EventSamplingConfig,
 }
 
 impl EventGateway {
     pub fn new(
         publisher: Box<dyn Publisher<Event> + Sync + Send>,
         store: Box<dyn Storage>,
+        sampling_enabled: bool,
+        sampling_threshold: f64,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(EventGateway { publisher, store })
+        Ok(EventGateway { 
+            publisher, 
+            store: Arc::new(store),
+            sampling: EventSamplingConfig::new(sampling_enabled, sampling_threshold),
+        })
+    }
+
+    fn should_store_event(&self, event: &Event) -> bool {
+        self.sampling.should_store_event(event)
+    }
+
+    fn store_event_in_background(
+        &self,
+        event: &Event,
+        routing_id: Option<Uuid>,
+        topic: String,
+        failure_reason: Option<String>,
+    ) {
+        if !self.should_store_event(event) {
+            return;
+        }
+
+        let store = Arc::clone(&self.store);
+        let event = event.clone();
+        task::spawn(async move {
+            if let Err(e) = store.store_event(&event, routing_id, Some(topic), failure_reason).await {
+                error!("Failed to store event in background: {:?}", e);
+            }
+        });
     }
 }
 
@@ -78,10 +133,10 @@ impl GateWay for EventGateway {
         let routings = TopicRoutings { rules };
 
         match routings.route(&event) {
-            Some(topic) => {
+            Some(routing) => {
                 let topic_schemas = self
                     .store
-                    .get_validations_for_topic(topic)
+                    .get_validations_for_topic(&routing.topic)
                     .await
                     .map_err(GatewayError::from)?;
                 let schemas: Vec<&DataSchema> = topic_schemas
@@ -100,7 +155,7 @@ impl GateWay for EventGateway {
                         );
                         debug!(
                             "Validating schema for event data: {} [topic={}]",
-                            json, topic
+                            json, routing.topic
                         );
                         schemas.iter().find_map(|&schema| {
                             if schema.schema.is_valid(&json) {
@@ -113,19 +168,61 @@ impl GateWay for EventGateway {
                     Data::String(_) => None,
                     Data::Binary(_) => None,
                 };
+
+                // Check schema validation first, regardless of storage threshold
                 if let Some(schema_details) = invalid_schema {
-                    return Err(GatewayError::SchemaInvalid(format!(
+                    let error_msg = format!(
                         "Data of event with id {} doesnt match schema {}",
                         event.id, schema_details.name
-                    )));
+                    );
+                    
+                    // Store the event with schema validation error if it passes the threshold
+                    self.store_event_in_background(
+                        event,
+                        Some(routing.id),
+                        routing.topic.clone(),
+                        Some(format!("Schema validation failed: {}", schema_details.name))
+                    );
+                    
+                    return Err(GatewayError::SchemaInvalid(error_msg));
                 }
-                let result = self.publisher.publish_one(&topic, event.to_owned()).await;
+
+                // Try to publish the event
+                let result = self.publisher.publish_one(&routing.topic, event.to_owned()).await;
+                
+                match result {
+                    Ok(_) => {
+                        self.store_event_in_background(
+                            event,
+                            Some(routing.id),
+                            routing.topic.clone(),
+                            None
+                        );
+                    }
+                    Err(e) => {
+                        self.store_event_in_background(
+                            event,
+                            Some(routing.id),
+                            routing.topic.clone(),
+                            Some(format!("Failed to publish event: {:?}", e))
+                        );
+                        return Err(GatewayError::InternalError(format!("Failed to publish event: {:?}", e)));
+                    }
+                }
                 result.map_err(GatewayError::from)
             }
-            None => Err(GatewayError::NoTopicToRoute(format!(
-                "No topic to route event: {:?}",
-                event.id
-            ))),
+            None => {
+                self.store_event_in_background(
+                    event,
+                    None,
+                    "".to_string(),
+                    Some("No topic to route event".to_string())
+                );
+                Err(GatewayError::NoTopicToRoute(format!(
+                    "No topic to route event: {:?}",
+                    event.id
+                )))
+            }
         }
     }
 

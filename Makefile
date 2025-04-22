@@ -13,7 +13,7 @@ run-prod:
 	@RUST_LOG=info ./target/release/event-gateway
 
 run-postgres:
-	@APP_CONFIG_PATH=config-postgres.toml RUST_LOG=info cargo run
+	@CMAKE_POLICY_VERSION_MINIMUM=3.5 APP_CONFIG_PATH=config-postgres.toml RUST_LOG=info cargo run
 
 post_event:
 	curl -v -X POST -H "Content-Type: application/json" -d '{ \

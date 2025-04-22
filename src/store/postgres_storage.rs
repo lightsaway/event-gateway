@@ -1,20 +1,17 @@
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
-use crate::store::storage::{Storage, StorageError};
+use crate::model::event::Event;
+use crate::store::storage::{Storage, StorageError, StoredEvent};
 use deadpool_postgres::{Config, Pool, Runtime};
 use serde_json::Value;
 use std::collections::HashMap;
 use tokio_postgres::NoTls;
 use uuid::Uuid;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc, TimeZone};
+use tokio_postgres::types::Type;
 
 pub struct PostgresStorage {
     pool: Pool,
-}
-
-impl From<tokio_postgres::Error> for StorageError {
-    fn from(err: tokio_postgres::Error) -> StorageError {
-        StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, err))
-    }
 }
 
 impl PostgresStorage {
@@ -235,5 +232,121 @@ impl Storage for PostgresStorage {
         } else {
             Ok(())
         }
+    }
+    
+    async fn store_event(&self, event: &Event, routing_id: Option<Uuid>, destination_topic: Option<String>, failure_reason: Option<String>) -> Result<(), StorageError> {
+        let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        
+        let stmt = client.prepare_cached(
+            "INSERT INTO events (id, event_id, event_type, event_version, routing_id, destination_topic, failure_reason, event_data, metadata, transport_metadata) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+        ).await?;
+
+        let event_data = match &event.data {
+            crate::model::event::Data::Json(data) => serde_json::to_value(data)?,
+            crate::model::event::Data::String(s) => serde_json::to_value(s)?,
+            crate::model::event::Data::Binary(b) => serde_json::to_value(b)?,
+        };
+
+        client.execute(
+            &stmt,
+            &[
+                &Uuid::new_v4(), // Generate a new UUID for the stored event
+                &event.id,
+                &event.event_type,
+                &event.event_version,
+                &routing_id,
+                &destination_topic,
+                &failure_reason,
+                &event_data,
+                &serde_json::to_value(&event.metadata)?,
+                &serde_json::to_value(&event.transport_metadata)?,
+            ],
+        ).await?;
+
+        Ok(())
+    }
+
+    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError> {
+        let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        
+        let stmt = client.prepare_cached(
+            "SELECT id, event_id, event_type, event_version, routing_id, destination_topic, failure_reason, stored_at, event_data 
+             FROM events WHERE id = $1"
+        ).await?;
+
+        let row = client.query_opt(&stmt, &[&id]).await?;
+        
+        if let Some(row) = row {
+            Ok(Some(StoredEvent {
+                id: row.get("id"),
+                event_id: row.get("event_id"),
+                event_type: row.get("event_type"),
+                event_version: row.get("event_version"),
+                routing_id: row.get("routing_id"),
+                destination_topic: row.get("destination_topic"),
+                failure_reason: row.get("failure_reason"),
+                stored_at: row.get("stored_at"),
+                event_data: row.get("event_data"),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
+        let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        
+        let stmt = client.prepare_cached(
+            "SELECT id, event_id, event_type, event_version, routing_id, destination_topic, failure_reason, stored_at, event_data 
+             FROM events WHERE event_type = $1 ORDER BY stored_at DESC LIMIT $2 OFFSET $3"
+        ).await?;
+
+        let rows = client.query(&stmt, &[&event_type, &limit, &offset]).await?;
+        
+        let mut events = Vec::with_capacity(rows.len());
+        for row in rows {
+            events.push(StoredEvent {
+                id: row.get("id"),
+                event_id: row.get("event_id"),
+                event_type: row.get("event_type"),
+                event_version: row.get("event_version"),
+                routing_id: row.get("routing_id"),
+                destination_topic: row.get("destination_topic"),
+                failure_reason: row.get("failure_reason"),
+                stored_at: row.get("stored_at"),
+                event_data: row.get("event_data"),
+            });
+        }
+        
+        Ok(events)
+    }
+
+    async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
+        let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        
+        let stmt = client.prepare_cached(
+            "SELECT id, event_id, event_type, event_version, routing_id, destination_topic, failure_reason, stored_at, event_data 
+             FROM events WHERE routing_id = $1 ORDER BY stored_at DESC LIMIT $2 OFFSET $3"
+        ).await?;
+
+        let rows = client.query(&stmt, &[&routing_id, &limit, &offset]).await?;
+        
+        let mut events = Vec::with_capacity(rows.len());
+        for row in rows {
+            events.push(StoredEvent {
+                id: row.get("id"),
+                event_id: row.get("event_id"),
+                event_type: row.get("event_type"),
+                event_version: row.get("event_version"),
+                routing_id: row.get("routing_id"),
+                destination_topic: row.get("destination_topic"),
+                failure_reason: row.get("failure_reason"),
+                stored_at: row.get("stored_at"),
+                event_data: row.get("event_data"),
+            });
+        }
+        
+        Ok(events)
     }
 } 
