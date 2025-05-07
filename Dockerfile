@@ -27,11 +27,15 @@ RUN apk add --no-cache \
 
 # Copy the build artifact from the builder stage
 COPY --from=builder /usr/src/event-gateway/target/release/event-gateway /usr/local/bin/event-gateway
-COPY --from=builder /usr/src/event-gateway/config.toml /etc/event-gateway/config.toml
-COPY --from=builder /usr/src/event-gateway/config-postgres.toml /etc/event-gateway/config-postgres.toml
 
 # Create a non-root user to run the application
 RUN adduser -D -u 1000 event-gateway
+
+# Create config directory and copy config file
+RUN mkdir -p /etc/event-gateway
+COPY condfigs/minimal-config.toml /etc/event-gateway/config.toml
+RUN chown -R event-gateway:event-gateway /etc/event-gateway
+
 USER event-gateway
 
 # Set the working directory

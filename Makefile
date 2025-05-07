@@ -14,10 +14,10 @@ run-prod: frontend-build
 	@RUST_LOG=info ./target/release/event-gateway
 
 run-postgres:
-	@CMAKE_POLICY_VERSION_MINIMUM=3.5 APP_CONFIG_PATH=config-postgres.toml RUST_LOG=info cargo run
+	@CMAKE_POLICY_VERSION_MINIMUM=3.5 APP_CONFIG_PATH=./configs/config-postgres.toml RUST_LOG=info cargo run
 
 run-prod-postgres:
-	@RUST_LOG=info APP_CONFIG_PATH=config-postgres.toml ./target/release/event-gateway
+	@RUST_LOG=info APP_CONFIG_PATH=./configs/config-postgres.toml ./target/release/event-gateway
 
 
 post_event:

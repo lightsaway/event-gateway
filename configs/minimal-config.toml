@@ -1,0 +1,18 @@
+debug_mode = false
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[database]
+type = "inMemory"
+
+[gateway]
+metrics_enabled = true
+sampling_enabled = true
+sampling_threshold = 100
+[gateway.publisher]
+type = "noOp"
+
+[api]
+prefix = "/api/v1" 

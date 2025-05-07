@@ -90,7 +90,28 @@ services:
       - "8080:8080"
     environment:
       - RUST_LOG=info
-      - APP_CONFIG_PATH=/etc/event-gateway/config-postgres.toml
+      - APP_DEBUG_MODE=false
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=8080
+      - APP_DATABASE__TYPE=postgres
+      - APP_DATABASE__USERNAME=admin
+      - APP_DATABASE__PASSWORD=secret
+      - APP_DATABASE__ENDPOINT=postgres:5432
+      - APP_DATABASE__DBNAME=event_gateway
+      - APP_DATABASE__CACHE_REFRESH_INTERVAL_SECS=300
+      - APP_GATEWAY__PUBLISHER__TYPE=kafka
+      - APP_GATEWAY__PUBLISHER__BROKERS=["redpanda:29092"]
+      - APP_GATEWAY__PUBLISHER__COMPRESSION=none
+      - APP_GATEWAY__PUBLISHER__CLIENT_ID=event-gateway
+      - APP_GATEWAY__PUBLISHER__REQUIRED_ACKS=none
+      - APP_GATEWAY__PUBLISHER__CONN_IDLE_TIMEOUT=5m
+      - APP_GATEWAY__PUBLISHER__MESSAGE_TIMEOUT=5s
+      - APP_GATEWAY__PUBLISHER__ACK_TIMEOUT=5s
+      - APP_GATEWAY__PUBLISHER__METADATA_FIELD_AS_KEY=user_id
+      - APP_GATEWAY__METRICS_ENABLED=true
+      - APP_GATEWAY__SAMPLING_ENABLED=true
+      - APP_GATEWAY__SAMPLING_THRESHOLD=100
+      - APP_API__PREFIX=/api/v1
     depends_on:
       postgres:
         condition: service_healthy
