@@ -57,7 +57,8 @@ impl From<deadpool_postgres::PoolError> for StorageError {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StoredEvent {
     pub id: Uuid,
     pub event_id: Uuid,
@@ -92,6 +93,7 @@ pub trait Storage: Send + Sync {
     async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError>;
     async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError>;
     async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError>;
+    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError>;
 }
 
 #[derive(Deserialize)]
@@ -169,6 +171,10 @@ impl Storage for InMemoryStorage {
     }
 
     async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
+        todo!()
+    }
+
+    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError> {
         todo!()
     }
 }

@@ -40,6 +40,16 @@ pub enum GatewayError {
     InternalError(String),
 }
 
+impl std::fmt::Display for GatewayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GatewayError::SchemaInvalid(msg) => write!(f, "Schema validation failed: {}", msg),
+            GatewayError::NoTopicToRoute(msg) => write!(f, "No topic to route: {}", msg),
+            GatewayError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+        }
+    }
+}
+
 struct EventSamplingConfig {
     enabled: bool,
     threshold: f64,
@@ -82,6 +92,10 @@ impl EventGateway {
             store: Arc::new(store),
             sampling: EventSamplingConfig::new(sampling_enabled, sampling_threshold),
         })
+    }
+
+    pub async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), GatewayError> {
+        self.store.get_sample_events(limit, offset).await.map_err(GatewayError::from)
     }
 
     fn should_store_event(&self, event: &Event) -> bool {

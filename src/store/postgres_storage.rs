@@ -1,5 +1,5 @@
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
-use crate::model::event::Event;
+use crate::model::event::{Event, DataType};
 use crate::store::storage::{Storage, StorageError, StoredEvent};
 use deadpool_postgres::{Config, Pool, Runtime};
 use serde_json::Value;
@@ -348,5 +348,51 @@ impl Storage for PostgresStorage {
         }
         
         Ok(events)
+    }
+
+    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError> {
+        let client = self.pool.get().await.map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        
+        // First get total count
+        let count_stmt = client.prepare_cached("SELECT COUNT(*) FROM events").await?;
+        let total: i64 = client.query_one(&count_stmt, &[]).await?.get(0);
+        
+        // Then get paginated events
+        let stmt = client.prepare_cached(
+            "SELECT id, event_id, event_type, event_version, event_data, metadata, transport_metadata, stored_at 
+             FROM events 
+             ORDER BY stored_at DESC 
+             LIMIT $1 OFFSET $2"
+        ).await?;
+
+        let rows = client.query(&stmt, &[&limit, &offset]).await?;
+        
+        let mut events = Vec::with_capacity(rows.len());
+        for row in rows {
+            let event_data: Value = row.get("event_data");
+            let metadata: Value = row.get("metadata");
+            let transport_metadata: Value = row.get("transport_metadata");
+            let stored_at: DateTime<Utc> = row.get("stored_at");
+
+            // Convert the event_data Value into a HashMap
+            let event_data_map = match event_data {
+                Value::Object(map) => map.into_iter().collect::<HashMap<String, Value>>(),
+                _ => HashMap::new(), // If not an object, create an empty map
+            };
+
+            events.push(Event {
+                id: row.get("event_id"),
+                event_type: row.get("event_type"),
+                event_version: row.get("event_version"),
+                metadata: serde_json::from_value(metadata).unwrap_or_default(),
+                transport_metadata: serde_json::from_value(transport_metadata).ok(),
+                data_type: None,
+                data: crate::model::event::Data::Json(event_data_map),
+                timestamp: Some(stored_at),
+                origin: None,
+            });
+        }
+        
+        Ok((events, total))
     }
 } 

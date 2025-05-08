@@ -1,7 +1,10 @@
 .PHONY: loadtest frontend-dev frontend-build frontend-clean
 
-dev: frontend-dev
-	@cargo watch -x build
+fe-dev: 
+	cd ui && npm run dev
+
+dev:
+	@CMAKE_POLICY_VERSION_MINIMUM=3.5  cargo watch -x build
 
 test:
 	@mkdir -p ui/dist

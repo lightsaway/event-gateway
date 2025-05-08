@@ -33,7 +33,7 @@ RUN adduser -D -u 1000 event-gateway
 
 # Create config directory and copy config file
 RUN mkdir -p /etc/event-gateway
-COPY condfigs/minimal-config.toml /etc/event-gateway/config.toml
+COPY configs/minimal-config.toml /etc/event-gateway/config.toml
 RUN chown -R event-gateway:event-gateway /etc/event-gateway
 
 USER event-gateway

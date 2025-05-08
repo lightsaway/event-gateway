@@ -4,7 +4,7 @@ use crate::model::expressions::Condition;
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::{gateway::gateway::EventGateway, model::event::Event};
 use axum::async_trait;
-use axum::extract::{FromRequestParts, Path, Request};
+use axum::extract::{FromRequestParts, Path, Request, Query};
 use axum::http::request::Parts;
 use axum::middleware::Next;
 use axum::routing::delete;
@@ -30,6 +30,7 @@ use std::sync::Arc;
 use tower::{Service, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
+use log;
 
 #[derive(Debug, Clone)]
 struct RequestMetadata {
@@ -99,12 +100,28 @@ struct CreateRoutingRuleRequest {
     description: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct PaginationParams {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SampleEventsResponse {
+    events: Vec<Event>,
+    total: i64,
+    limit: i64,
+    offset: i64,
+}
+
 pub async fn app_router(
     service: Arc<crate::gateway::gateway::EventGateway>,
     config: &ApiConfig,
 ) -> Router {
     let routes = Router::new()
         .route("/event", post(handle_event))
+        .route("/events/samples", get(get_sample_events))
         .route("/routing-rules", get(read_rules))
         .route("/routing-rules", post(create_routing_rule))
         .route("/routing-rules/:id", put(update_routing_rule))
@@ -361,4 +378,34 @@ async fn read_rules(State(service): State<Arc<EventGateway>>) -> Result<Response
             .unwrap()),
         Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
     }
+}
+
+async fn get_sample_events(
+    State(service): State<Arc<EventGateway>>,
+    Query(params): Query<PaginationParams>,
+) -> Result<Response, Response> {
+    let limit = params.limit.unwrap_or(100).min(1000); // Cap at 1000 events
+    let offset = params.offset.unwrap_or(0);
+    log::info!("Fetching sample events with limit={}, offset={}", limit, offset);
+
+    let (events, total) = service.get_sample_events(limit, offset).await.map_err(|e| {
+        log::error!("Failed to fetch sample events: {}", e);
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Body::from(format!("Failed to fetch sample events: {}", e)))
+            .unwrap()
+    })?;
+
+    log::info!("Retrieved {} events (total: {})", events.len(), total);
+    let response = SampleEventsResponse {
+        events,
+        total,
+        limit,
+        offset,
+    };
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&response).unwrap()))
+        .unwrap())
 }

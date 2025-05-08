@@ -7,6 +7,7 @@ use log::{info, warn, debug};
 use async_trait::async_trait;
 
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
+use crate::model::event::Event;
 use crate::store::storage::{Storage, StorageError};
 use crate::store::postgres_storage::PostgresStorage;
 
@@ -293,5 +294,10 @@ impl Storage for CachedPostgresStorage {
     async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<crate::store::storage::StoredEvent>, StorageError> {
         // Delegate to the underlying PostgresStorage
         self.postgres.get_events_by_routing(routing_id, limit, offset).await
+    }
+
+    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError> {
+        // Delegate to the underlying postgres storage
+        self.postgres.get_sample_events(limit, offset).await
     }
 } 

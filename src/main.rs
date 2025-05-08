@@ -85,13 +85,25 @@ fn load_publisher(config: PublisherConfig) -> Box<dyn Publisher<Event> + Send + 
 fn load_configuration() -> Result<AppConfig, String> {
     let config_path = std::env::var("APP_CONFIG_PATH").unwrap_or("config".to_string());
     info!("Loading config from {}", config_path);
+    
     let mut cfg = Config::builder()
         .add_source(config::File::with_name(config_path.as_str()))
-        .add_source(config::Environment::with_prefix("APP"))
-        .build()
-        .unwrap();
-    cfg.try_deserialize::<AppConfig>()
-        .map_err(|e| e.to_string())
+        .add_source(config::Environment::with_prefix("APP")
+            .separator("_")
+            .list_separator(",")
+            .with_list_parse_key("gateway.publisher.brokers")
+            .with_list_parse_key("GATEWAY_PUBLISHER_BROKERS")
+            .try_parsing(true))
+            .build()
+            .unwrap();
+    
+    let config = cfg.try_deserialize::<AppConfig>()
+        .map_err(|e| e.to_string())?;
+    
+    info!("Loaded database config: {:?}", config.database);
+    info!("Loaded gateway config: {:?}", config.gateway);
+    info!("Loaded publisher config: {:?}", config.gateway.publisher);
+    Ok(config)
 }
 
 #[tokio::main]

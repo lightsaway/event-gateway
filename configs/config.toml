@@ -71,7 +71,6 @@ sampling_enabled = true
 sampling_threshold = 100
 
 [gateway.publisher]
-# type = "noOp"
 type = "kafka"
 brokers = ["127.0.0.1:9092"]
 compression = "none"

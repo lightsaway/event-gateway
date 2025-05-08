@@ -60,7 +60,7 @@ const PlaygroundPage: React.FC = () => {
     const storedEvent: StoredEvent = {
       id: event.id,
       eventType: event.eventType,
-      eventVersion: event.eventVersion,
+      eventVersion: event.eventVersion || '',
       data: event.data,
       metadata: event.metadata,
       submittedAt: new Date().toISOString(),
@@ -81,7 +81,7 @@ const PlaygroundPage: React.FC = () => {
         eventVersion: values.version || 'N/A',
         data: values.dataType === 'json' ? JSON.parse(values.data) : values.data,
         metadata: values.metadata ? JSON.parse(values.metadata) : undefined,
-        transport_metadata: values.transportMetadata ? JSON.parse(values.transportMetadata) : undefined,
+        transportMetadata: values.transportMetadata ? JSON.parse(values.transportMetadata) : undefined,
         timestamp: new Date().toISOString(),
         origin: 'playground',
       };

@@ -13,6 +13,16 @@ sampling_enabled = true
 sampling_threshold = 100
 [gateway.publisher]
 type = "noOp"
+brokers = ["127.0.0.1:9092"]
+compression = "none"
+client_id = "event-gateway"
+acks = -1
+retries = 3
+required_acks = "none"
+conn_idle_timeout = "5m"
+message_timeout = "5s"
+ack_timeout = "5s"
+metadata_field_as_key = "user_id"
 
 [api]
 prefix = "/api/v1" 

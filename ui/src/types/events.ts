@@ -3,12 +3,13 @@ export type DataType = 'string' | 'json' | 'binary';
 export interface Event {
   id: string;
   eventType: string;
-  eventVersion: string;
+  eventVersion?: string;
   data: any;
   metadata?: Record<string, any>;
-  transport_metadata?: Record<string, any>;
-  timestamp: string;
-  origin: string;
+  transportMetadata?: Record<string, any>;
+  dataType?: DataType;
+  timestamp?: string;
+  origin?: string;
 }
 
 export interface EventFormValues {

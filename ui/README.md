@@ -3,7 +3,7 @@
 
 ## Features
 
-- **Dashboard**: Overview of events, rules, and system metrics
+- **Events**: Sampled events view
 - **Routing Rules**: Create, edit, and manage event routing rules
 - **Topic Validations**: Define and manage validation schemas for topics
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS

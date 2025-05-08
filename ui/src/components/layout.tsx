@@ -22,15 +22,6 @@ export function Layout({ children }: LayoutProps) {
           </div>
           <nav className="space-y-1 px-4">
             <Link
-              to="/"
-              className={cn(
-                'flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-accent'
-              )}
-            >
-              Dashboard
-            </Link>
-            <Link
               to="/events"
               className={cn(
                 'flex items-center px-4 py-2 text-sm font-medium rounded-md',

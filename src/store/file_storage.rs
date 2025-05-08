@@ -247,6 +247,11 @@ impl Storage for FileStorage {
         let end = (offset + limit) as usize;
         Ok(events.into_iter().skip(start).take(end - start).collect())
     }
+
+    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError> {
+        // File storage doesn't support event sampling
+        Ok((Vec::new(), 0))
+    }
 }
 
 #[cfg(test)]
