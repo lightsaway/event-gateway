@@ -12,10 +12,23 @@ pub enum Schema {
     Json(JSchema),
 }
 
+#[derive(Debug, Clone)]
+pub struct ValidationError {
+    pub message: String,
+    pub instance_path: String,
+    pub schema_path: String,
+}
+
 impl Schema {
     pub fn is_valid(&self, data: &Value) -> bool {
         match self {
             Schema::Json(schema) => schema.compiled_schema.is_valid(data),
+        }
+    }
+
+    pub fn validate(&self, data: &Value) -> Result<(), Vec<ValidationError>> {
+        match self {
+            Schema::Json(schema) => schema.validate(data),
         }
     }
 }
@@ -98,6 +111,24 @@ impl Serialize for JSchema {
         S: Serializer,
     {
         self.raw_schema.serialize(serializer)
+    }
+}
+
+impl JSchema {
+    pub fn validate(&self, data: &Value) -> Result<(), Vec<ValidationError>> {
+        match self.compiled_schema.validate(data) {
+            Ok(_) => Ok(()),
+            Err(errors) => {
+                let validation_errors: Vec<ValidationError> = errors
+                    .map(|error| ValidationError {
+                        message: error.to_string(),
+                        instance_path: error.instance_path.to_string(),
+                        schema_path: error.schema_path.to_string(),
+                    })
+                    .collect();
+                Err(validation_errors)
+            }
+        }
     }
 }
 
@@ -185,5 +216,56 @@ mod tests {
         print!("{}", serialized);
         let deserialized: DataSchema = serde_json::from_str(&serialized).unwrap();
         assert_eq!(schema, deserialized);
+    }
+
+    #[test]
+    fn test_detailed_schema_validation() {
+        let raw_schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "age": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "required": ["name"]
+        });
+
+        let schema = Schema::Json(JSchema {
+            compiled_schema: JSONSchema::compile(&raw_schema).unwrap(),
+            raw_schema: raw_schema,
+            draft_version: Draft::Draft7,
+        });
+
+        // Test valid data
+        let valid_data = serde_json::json!({
+            "name": "John",
+            "age": 30
+        });
+        assert!(schema.validate(&valid_data).is_ok());
+
+        // Test invalid data (missing required field)
+        let invalid_data = serde_json::json!({
+            "age": 30
+        });
+        let result = schema.validate(&invalid_data);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(!errors.is_empty());
+        assert!(errors[0].message.contains("required"));
+
+        // Test invalid data (wrong type)
+        let invalid_type_data = serde_json::json!({
+            "name": "John",
+            "age": "thirty"
+        });
+        let result = schema.validate(&invalid_type_data);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(!errors.is_empty());
+        assert!(errors[0].instance_path.contains("age"));
     }
 }

@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::task;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use crate::{
     model::{
@@ -116,9 +116,50 @@ impl EventGateway {
         let store = Arc::clone(&self.store);
         let event = event.clone();
         let topic_str = topic.into_string();
+        
         task::spawn(async move {
-            if let Err(e) = store.store_event(&event, routing_id, Some(topic_str), failure_reason).await {
-                error!("Failed to store event in background: {:?}", e);
+            const MAX_ATTEMPTS: u32 = 3;
+            const INITIAL_DELAY_MS: u64 = 100;
+            const MAX_DELAY_MS: u64 = 5000;
+            
+            let mut attempts = 0;
+            let mut delay = Duration::from_millis(INITIAL_DELAY_MS);
+            
+            while attempts < MAX_ATTEMPTS {
+                attempts += 1;
+                
+                match store.store_event(&event, routing_id, Some(topic_str.clone()), failure_reason.clone()).await {
+                    Ok(_) => {
+                        if attempts > 1 {
+                            info!("Successfully stored event {} after {} attempts", event.id, attempts);
+                        }
+                        return;
+                    }
+                    Err(e) => {
+                        if attempts == MAX_ATTEMPTS {
+                            error!(
+                                "Failed to store event {} after {} attempts: {:?}. Event will be lost.", 
+                                event.id, MAX_ATTEMPTS, e
+                            );
+                            return;
+                        } else {
+                            warn!(
+                                "Failed to store event {} (attempt {}/{}): {:?}. Retrying in {:?}...", 
+                                event.id, attempts, MAX_ATTEMPTS, e, delay
+                            );
+                            
+                            // Sleep before retrying
+                            tokio::time::sleep(delay).await;
+                            
+                            // Exponential backoff with jitter and max cap
+                            delay = std::cmp::min(
+                                    // Add simple jitter based on event ID
+                                delay * 2 + Duration::from_millis((event.id.as_u128() % 100) as u64),
+                                Duration::from_millis(MAX_DELAY_MS)
+                            );
+                        }
+                    }
+                }
             }
         });
     }
@@ -161,7 +202,7 @@ impl GateWay for EventGateway {
                     })
                     .collect();
 
-                let invalid_schema = match &event.data {
+                let validation_errors = match &event.data {
                     Data::Json(j) => {
                         let json = Value::Object(
                             j.into_iter()
@@ -172,31 +213,39 @@ impl GateWay for EventGateway {
                             "Validating schema for event data: {} [topic={}]",
                             json, routing.topic
                         );
-                        schemas.iter().find_map(|&schema| {
-                            if schema.schema.is_valid(&json) {
-                                None
-                            } else {
-                                Some(schema)
+                        
+                        // Collect validation errors from all schemas
+                        let mut schema_errors = Vec::new();
+                        for schema in &schemas {
+                            if let Err(errors) = schema.schema.validate(&json) {
+                                let error_details = errors.iter()
+                                    .map(|e| format!("Field '{}': {} (at schema path: {})", 
+                                                   e.instance_path, e.message, e.schema_path))
+                                    .collect::<Vec<_>>()
+                                    .join("; ");
+                                schema_errors.push((schema, error_details));
                             }
-                        })
+                        }
+                        schema_errors
                     }
-                    Data::String(_) => None,
-                    Data::Binary(_) => None,
+                    Data::String(_) => Vec::new(),
+                    Data::Binary(_) => Vec::new(),
                 };
 
                 // Check schema validation first, regardless of storage threshold
-                if let Some(schema_details) = invalid_schema {
+                if !validation_errors.is_empty() {
+                    let (failed_schema, error_details) = &validation_errors[0];
                     let error_msg = format!(
-                        "Data of event with id {} doesnt match schema {}",
-                        event.id, schema_details.name
+                        "Event {} failed schema validation for '{}': {}",
+                        event.id, failed_schema.name, error_details
                     );
                     
-                    // Store the event with schema validation error if it passes the threshold
+                    // Store the event with detailed schema validation error
                     self.store_event_in_background(
                         event,
                         Some(routing.id),
                         routing.topic.clone(),
-                        Some(format!("Schema validation failed: {}", schema_details.name))
+                        Some(format!("Schema validation failed for '{}': {}", failed_schema.name, error_details))
                     );
                     
                     return Err(GatewayError::SchemaInvalid(error_msg));
