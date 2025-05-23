@@ -1,5 +1,6 @@
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::model::event::{Event, DataType};
+use crate::model::topic::Topic;
 use crate::store::storage::{Storage, StorageError, StoredEvent};
 use deadpool_postgres::{Config, Pool, Runtime};
 use serde_json::Value;
@@ -64,7 +65,7 @@ impl Storage for PostgresStorage {
             &[
                 &rule.id,
                 &rule.order,
-                &rule.topic,
+                &rule.topic.as_str(),
                 &rule.description,
                 &serde_json::to_value(&rule.event_version_condition)?,
                 &serde_json::to_value(&rule.event_type_condition)?,
@@ -91,7 +92,7 @@ impl Storage for PostgresStorage {
             Ok(Some(TopicRoutingRule {
                 id: row.get("id"),
                 order: row.get("order_num"),
-                topic: row.get("topic"),
+                topic: Topic::new(row.get::<_, String>("topic")).map_err(|e| StorageError::Other(e.to_string()))?,
                 description: row.get("description"),
                 event_version_condition: serde_json::from_value(event_version_condition)?,
                 event_type_condition: serde_json::from_value(event_type_condition)?,
@@ -119,7 +120,7 @@ impl Storage for PostgresStorage {
             rules.push(TopicRoutingRule {
                 id: row.get("id"),
                 order: row.get("order_num"),
-                topic: row.get("topic"),
+                topic: Topic::new(row.get::<_, String>("topic")).map_err(|e| StorageError::Other(e.to_string()))?,
                 description: row.get("description"),
                 event_version_condition: serde_json::from_value(event_version_condition)?,
                 event_type_condition: serde_json::from_value(event_type_condition)?,
@@ -145,7 +146,7 @@ impl Storage for PostgresStorage {
             &[
                 &id,
                 &rule.order,
-                &rule.topic,
+                &rule.topic.as_str(),
                 &rule.description,
                 &serde_json::to_value(&rule.event_version_condition)?,
                 &serde_json::to_value(&rule.event_type_condition)?,
@@ -183,7 +184,7 @@ impl Storage for PostgresStorage {
             &stmt,
             &[
                 &v.id,
-                &v.topic,
+                &v.topic.as_str(),
                 &serde_json::to_value(&v.schema)?,
             ],
         ).await?;
@@ -209,7 +210,7 @@ impl Storage for PostgresStorage {
             
             let config = TopicValidationConfig {
                 id,
-                topic: topic.clone(),
+                topic: Topic::new(topic.clone()).map_err(|e| StorageError::Other(e.to_string()))?,
                 schema,
             };
             

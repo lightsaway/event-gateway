@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use super::{event::DataType, expressions::Condition};
+use super::{event::DataType, expressions::Condition, topic::Topic};
 use jsonschema::{Draft, JSONSchema};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
@@ -114,7 +114,7 @@ pub struct DataSchema {
 #[derive(Clone, Serialize, PartialEq, Deserialize)]
 pub struct TopicValidationConfig {
     pub id: Uuid,
-    pub topic: String,
+    pub topic: Topic,
     pub schema: DataSchema,
 }
 
@@ -123,7 +123,7 @@ pub struct TopicValidationConfig {
 pub struct TopicRoutingRule {
     pub id: Uuid,
     pub order: i32,
-    pub topic: String,
+    pub topic: Topic,
     pub event_type_condition: Condition,
     pub event_version_condition: Option<Condition>,
     pub description: Option<String>,
@@ -141,7 +141,7 @@ mod tests {
         let rule = TopicRoutingRule {
             id: Uuid::new_v4(),
             order: 1,
-            topic: "example".into(),
+            topic: Topic::new("example").unwrap(),
             event_type_condition: Condition::ONE(StringExpression::StartsWith {
                 value: "test".into(),
             }),

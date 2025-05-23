@@ -2,6 +2,7 @@ use crate::configuration::ApiConfig;
 use crate::gateway::gateway::GateWay;
 use crate::model::expressions::Condition;
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
+use crate::model::topic::Topic;
 use crate::{gateway::gateway::EventGateway, model::event::Event};
 use axum::async_trait;
 use axum::extract::{FromRequestParts, Path, Request, Query};
@@ -241,10 +242,18 @@ async fn create_routing_rule(
     State(service): State<Arc<EventGateway>>,
     Json(request): Json<CreateRoutingRuleRequest>,
 ) -> Result<Response, Response> {
+    let topic = Topic::new(&request.topic).map_err(|e| {
+        Response::builder()
+            .status(400)
+            .header("Content-Type", "application/json")
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {}"}}"#, e)))
+            .unwrap()
+    })?;
+    
     let rule = TopicRoutingRule {
         id: Uuid::new_v4(),
         order: request.order,
-        topic: request.topic,
+        topic,
         event_type_condition: request.event_type_condition,
         event_version_condition: request.event_version_condition,
         description: request.description,
@@ -269,10 +278,18 @@ async fn update_routing_rule(
     Path(id): Path<Uuid>,
     Json(request): Json<CreateRoutingRuleRequest>,
 ) -> Result<Response, Response> {
+    let topic = Topic::new(&request.topic).map_err(|e| {
+        Response::builder()
+            .status(400)
+            .header("Content-Type", "application/json")
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {}"}}"#, e)))
+            .unwrap()
+    })?;
+    
     let rule = TopicRoutingRule {
         id,
         order: request.order,
-        topic: request.topic,
+        topic,
         event_type_condition: request.event_type_condition,
         event_version_condition: request.event_version_condition,
         description: request.description,
@@ -315,9 +332,17 @@ async fn create_topic_validation(
     State(service): State<Arc<EventGateway>>,
     Json(request): Json<CreateTopicValidationRequest>,
 ) -> Result<Response, Response> {
+    let topic = Topic::new(&request.topic).map_err(|e| {
+        Response::builder()
+            .status(400)
+            .header("Content-Type", "application/json")
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {}"}}"#, e)))
+            .unwrap()
+    })?;
+    
     let validation = TopicValidationConfig {
         id: Uuid::new_v4(),
-        topic: request.topic,
+        topic,
         schema: request.schema,
     };
     let result = service.add_topic_validation(&validation).await;

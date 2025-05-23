@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Binary, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::task;
 use log::{debug, error, info};
 
@@ -6,13 +6,13 @@ use crate::{
     model::{
         event::{Data, Event},
         routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
+        topic::Topic,
     },
     publisher::publisher::{Publisher, PublisherError},
     router::router::{TopicRouter, TopicRoutings},
     store::storage::{Storage, StorageError},
 };
 
-use axum::http::uri::Scheme;
 use jsonschema::{Draft, JSONSchema};
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -106,7 +106,7 @@ impl EventGateway {
         &self,
         event: &Event,
         routing_id: Option<Uuid>,
-        topic: String,
+        topic: Topic,
         failure_reason: Option<String>,
     ) {
         if !self.should_store_event(event) {
@@ -115,8 +115,9 @@ impl EventGateway {
 
         let store = Arc::clone(&self.store);
         let event = event.clone();
+        let topic_str = topic.into_string();
         task::spawn(async move {
-            if let Err(e) = store.store_event(&event, routing_id, Some(topic), failure_reason).await {
+            if let Err(e) = store.store_event(&event, routing_id, Some(topic_str), failure_reason).await {
                 error!("Failed to store event in background: {:?}", e);
             }
         });
@@ -150,7 +151,7 @@ impl GateWay for EventGateway {
             Some(routing) => {
                 let topic_schemas = self
                     .store
-                    .get_validations_for_topic(&routing.topic)
+                    .get_validations_for_topic(routing.topic.as_str())
                     .await
                     .map_err(GatewayError::from)?;
                 let schemas: Vec<&DataSchema> = topic_schemas
@@ -202,7 +203,7 @@ impl GateWay for EventGateway {
                 }
 
                 // Try to publish the event
-                let result = self.publisher.publish_one(&routing.topic, event.to_owned()).await;
+                let result = self.publisher.publish_one(routing.topic.as_str(), event.to_owned()).await;
                 
                 match result {
                     Ok(_) => {
@@ -229,7 +230,7 @@ impl GateWay for EventGateway {
                 self.store_event_in_background(
                     event,
                     None,
-                    "".to_string(),
+                    Topic::new("").unwrap_or_else(|_| Topic::new("unknown").unwrap()),
                     Some("No topic to route event".to_string())
                 );
                 Err(GatewayError::NoTopicToRoute(format!(

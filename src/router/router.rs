@@ -32,6 +32,7 @@ mod tests {
     use super::*;
     use crate::model::{
         event::Data, event::Event, expressions::Condition, expressions::StringExpression,
+        topic::Topic,
     };
 
     use super::*;
@@ -43,7 +44,7 @@ mod tests {
                 TopicRoutingRule {
                     id: Uuid::new_v4(),
                     order: 0,
-                    topic: "topic_one".to_string(),
+                    topic: Topic::new("topic_one").unwrap(),
                     description: None,
                     event_version_condition: None,
                     event_type_condition: Condition::ONE(StringExpression::Equals {
@@ -53,7 +54,7 @@ mod tests {
                 TopicRoutingRule {
                     id: Uuid::new_v4(),
                     order: 0,
-                    topic: "topic_two".to_string(),
+                    topic: Topic::new("topic_two").unwrap(),
                     description: None,
                     event_version_condition: None,
                     event_type_condition: Condition::ONE(StringExpression::Equals {
@@ -84,8 +85,8 @@ mod tests {
             ..event.clone()
         };
 
-        assert_eq!(routings.route(&event).map(|r| r.topic.clone()), Some("topic_one".to_string()));
-        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone()), Some("topic_two".to_string()));
+        assert_eq!(routings.route(&event).map(|r| r.topic.clone().into_string()), Some("topic_one".to_string()));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone().into_string()), Some("topic_two".to_string()));
         assert_eq!(routings.route(&event_three), None);
     }
 
@@ -95,7 +96,7 @@ mod tests {
             rules: vec![TopicRoutingRule {
                 id: Uuid::new_v4(),
                 order: 0,
-                topic: "topic".to_string(),
+                topic: Topic::new("topic").unwrap(),
                 description: None,
                 event_version_condition: Some(Condition::ONE(StringExpression::Equals {
                     value: "1.0".to_string(),
@@ -129,7 +130,7 @@ mod tests {
         };
 
         assert_eq!(routings.route(&event), None);
-        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone()), Some("topic".to_string()));
+        assert_eq!(routings.route(&event_two).map(|r| r.topic.clone().into_string()), Some("topic".to_string()));
         assert_eq!(routings.route(&event_three), None);
     }
 }

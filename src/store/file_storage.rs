@@ -12,6 +12,7 @@ use serde_json::Value;
 
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::model::event::Event;
+use crate::model::topic::Topic;
 use crate::store::storage::{Storage, StorageError, StoredEvent};
 use crate::model::expressions::{Condition, StringExpression};
 
@@ -142,7 +143,7 @@ impl Storage for FileStorage {
             if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
                 let content = fs::read_to_string(entry.path())?;
                 let validation: TopicValidationConfig = serde_json::from_str(&content)?;
-                validations.entry(validation.topic.clone())
+                validations.entry(validation.topic.as_str().to_string())
                     .or_insert_with(Vec::new)
                     .push(validation);
             }
@@ -264,7 +265,7 @@ mod tests {
         TopicRoutingRule {
             id: Uuid::new_v4(),
             order: 0,
-            topic: "test_topic".to_string(),
+            topic: Topic::new("test_topic").unwrap(),
             description: None,
             event_version_condition: None,
             event_type_condition: Condition::ONE(StringExpression::Equals {
@@ -301,10 +302,10 @@ mod tests {
         let storage = FileStorage::new(temp_dir.path());
         let mut rule = create_dummy_rule();
         storage.add_rule(&rule).await?;
-        rule.topic = "updated_topic".to_string();
+        rule.topic = Topic::new("updated_topic").unwrap();
         storage.update_rule(rule.id, &rule).await?;
         let retrieved = storage.get_rule(rule.id).await?.unwrap();
-        assert_eq!(retrieved.topic, "updated_topic");
+        assert_eq!(retrieved.topic, Topic::new("updated_topic").unwrap());
         Ok(())
     }
 

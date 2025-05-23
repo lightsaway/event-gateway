@@ -1,5 +1,6 @@
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::model::event::Event;
+use crate::model::topic::Topic;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
@@ -17,6 +18,7 @@ pub enum StorageError {
     SerializationError(serde_json::Error),
     DatabaseError(tokio_postgres::Error),
     PoolError(deadpool_postgres::PoolError),
+    Other(String),
 }
 
 impl Error for StorageError {}
@@ -29,6 +31,7 @@ impl fmt::Display for StorageError {
             StorageError::SerializationError(_) => write!(f, "serialization error occurred"),
             StorageError::DatabaseError(_) => write!(f, "database error occurred"),
             StorageError::PoolError(_) => write!(f, "connection pool error occurred"),
+            StorageError::Other(ref msg) => write!(f, "other error: {}", msg),
         }
     }
 }
@@ -191,7 +194,7 @@ mod tests {
         let rule = TopicRoutingRule {
             id: Uuid::new_v4(),
             order: 0,
-            topic: "topic".to_string(),
+            topic: Topic::new("topic").unwrap(),
             description: None,
             event_version_condition: Some(Condition::ONE(StringExpression::Equals {
                 value: "1.0".to_string(),
