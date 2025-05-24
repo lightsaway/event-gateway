@@ -13,8 +13,8 @@ echo "Sending test events to $BASE_URL"
 send_event() {
   local event_type=$1
   local event_version=$2
-  local payload=$3
 
+  echo "payload: $payload"
   echo "Sending event: $event_type (v$event_version)"
   
   response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/event" \
@@ -37,7 +37,7 @@ send_event() {
 
 # Send user created event
 send_event "user.created" "1.0" '{
-  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "id": "'$(uuidgen)'",
   "eventType": "user.created",
   "eventVersion": "1.0",
   "metadata": {
@@ -57,7 +57,7 @@ send_event "user.created" "1.0" '{
 
 # Send user updated event
 send_event "user.updated" "1.0" '{
-  "id": "123e4567-e89b-12d3-a456-426614174001",
+  "id": "'${uuidgen}'",
   "eventType": "user.updated",
   "eventVersion": "1.0",
   "metadata": {
@@ -77,7 +77,7 @@ send_event "user.updated" "1.0" '{
 
 # Send order created event
 send_event "order.created" "1.0" '{
-  "id": "123e4567-e89b-12d3-a456-426614174002",
+  "id": "'${uuidgen}'",
   "eventType": "order.created",
   "eventVersion": "1.0",
   "metadata": {
@@ -104,7 +104,7 @@ send_event "order.created" "1.0" '{
 
 # Send order completed event
 send_event "order.completed" "1.0" '{
-  "id": "123e4567-e89b-12d3-a456-426614174003",
+  "id": "'${uuidgen}'",
   "eventType": "order.completed",
   "eventVersion": "1.0",
   "metadata": {
@@ -124,7 +124,7 @@ send_event "order.completed" "1.0" '{
 
 # Send product viewed event
 send_event "product.viewed" "1.0" '{
-  "id": "123e4567-e89b-12d3-a456-426614174004",
+  "id": "'${uuidgen}'",
   "eventType": "product.viewed",
   "eventVersion": "1.0",
   "metadata": {
