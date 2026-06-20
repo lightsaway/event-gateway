@@ -4,24 +4,32 @@ Releases are tag-driven.
 
 ## Prepare
 
-1. Update the package version in `Cargo.toml`.
-2. Update `Cargo.lock`.
-3. Run:
+Run the release checks before creating the version commit and tag:
 
 ```bash
 make ci-check
 make docker-build
 ```
 
-4. Commit and merge to `master`.
+Then bump the patch version, commit `Cargo.toml` and `Cargo.lock`, and create
+the matching local tag:
+
+```bash
+make create-next-tag
+```
+
+To choose a specific version instead:
+
+```bash
+make create-next-tag VERSION=0.2.0
+```
 
 ## Publish
 
-Create a matching annotated tag:
+Push the generated commit and tag:
 
 ```bash
-git tag -a v0.2.0 -m "v0.2.0"
-git push origin v0.2.0
+git push origin HEAD v0.2.0
 ```
 
 The workflow rejects a tag that does not match the Cargo package version.
