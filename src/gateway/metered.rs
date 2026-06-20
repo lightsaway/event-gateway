@@ -1,14 +1,14 @@
 use crate::{
     gateway::gateway::{GateWay, GatewayError},
-    model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
     model::event::Event,
+    model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
 };
 use prometheus::{
     register_counter_vec, register_histogram_vec, CounterVec, Encoder, HistogramVec, Opts,
     TextEncoder,
 };
-use std::error::Error;
 use std::collections::HashMap;
+use std::error::Error;
 use uuid::Uuid;
 
 pub struct MeteredEventGateway<T: GateWay> {
@@ -40,6 +40,10 @@ where
             counters,
             histogram,
         })
+    }
+
+    pub fn inner(&self) -> &T {
+        &self.gateway
     }
 }
 
@@ -111,7 +115,11 @@ where
         self.gateway.get_topic_validations().await
     }
 
-    async fn update_routing_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), GatewayError> {
+    async fn update_routing_rule(
+        &self,
+        id: Uuid,
+        rule: &TopicRoutingRule,
+    ) -> Result<(), GatewayError> {
         self.gateway.update_routing_rule(id, rule).await
     }
 }

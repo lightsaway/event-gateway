@@ -36,35 +36,35 @@ impl Topic {
     /// - Be no longer than 255 characters
     pub fn new(s: impl Into<String>) -> Result<Self, TopicValidationError> {
         let s = s.into();
-        
+
         if s.is_empty() {
             return Err(TopicValidationError::Empty);
         }
-        
+
         if s.len() > 255 {
             return Err(TopicValidationError::TooLong(s.len()));
         }
-        
+
         // Check for valid characters (alphanumeric, dots, hyphens, underscores)
         let invalid_chars: Vec<char> = s
             .chars()
             .filter(|&c| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_')
             .collect();
-        
+
         if !invalid_chars.is_empty() {
             return Err(TopicValidationError::InvalidCharacters(
-                invalid_chars.into_iter().collect()
+                invalid_chars.into_iter().collect(),
             ));
         }
-        
+
         Ok(Topic(s))
     }
-    
+
     /// Get the inner string value
     pub fn as_str(&self) -> &str {
         &self.0
     }
-    
+
     /// Convert to String
     pub fn into_string(self) -> String {
         self.0
@@ -124,8 +124,8 @@ mod tests {
         let topic = Topic::new("test_topic").unwrap();
         let serialized = serde_json::to_string(&topic).unwrap();
         assert_eq!(serialized, "\"test_topic\"");
-        
+
         let deserialized: Topic = serde_json::from_str(&serialized).unwrap();
         assert_eq!(topic, deserialized);
     }
-} 
+}

@@ -1,9 +1,6 @@
-use crate::model::event::Event;
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
-use crate::model::topic::Topic;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json;
 use std::collections::HashMap;
 use std::error::Error;
@@ -61,20 +58,6 @@ impl From<deadpool_postgres::PoolError> for StorageError {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StoredEvent {
-    pub id: Uuid,
-    pub event_id: Uuid,
-    pub event_type: String,
-    pub event_version: Option<String>,
-    pub routing_id: Option<Uuid>,
-    pub destination_topic: Option<String>,
-    pub failure_reason: Option<String>,
-    pub stored_at: DateTime<Utc>,
-    pub event_data: serde_json::Value,
-}
-
 #[async_trait]
 pub trait Storage: Send + Sync {
     async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError>;
@@ -100,40 +83,12 @@ pub trait Storage: Send + Sync {
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError>;
-
-    async fn store_event(
-        &self,
-        event: &Event,
-        routing_id: Option<Uuid>,
-        destination_topic: Option<String>,
-        failure_reason: Option<String>,
-    ) -> Result<(), StorageError>;
-    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError>;
-    async fn get_events_by_type(
-        &self,
-        event_type: &str,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<StoredEvent>, StorageError>;
-    async fn get_events_by_routing(
-        &self,
-        routing_id: Uuid,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<StoredEvent>, StorageError>;
-    async fn get_sample_events(
-        &self,
-        limit: i64,
-        offset: i64,
-    ) -> Result<(Vec<Event>, i64), StorageError>;
 }
 
 #[derive(Deserialize)]
 pub struct InMemoryStorage {
     routing_rules: RwLock<Vec<TopicRoutingRule>>,
     topic_validations: RwLock<HashMap<String, Vec<TopicValidationConfig>>>,
-    #[serde(default)]
-    events: RwLock<Vec<StoredEvent>>,
 }
 
 impl InMemoryStorage {
@@ -141,7 +96,6 @@ impl InMemoryStorage {
         InMemoryStorage {
             routing_rules: RwLock::new(Vec::new()),
             topic_validations: RwLock::new(HashMap::new()),
-            events: RwLock::new(Vec::new()),
         }
     }
 
@@ -166,12 +120,6 @@ impl InMemoryStorage {
 
     fn lock_error(name: &str) -> StorageError {
         StorageError::Other(format!("in-memory {name} lock poisoned"))
-    }
-
-    fn page<T: Clone>(items: &[T], limit: i64, offset: i64) -> Vec<T> {
-        let offset = offset.max(0) as usize;
-        let limit = limit.max(0) as usize;
-        items.iter().skip(offset).take(limit).cloned().collect()
     }
 }
 
@@ -283,90 +231,12 @@ impl Storage for InMemoryStorage {
         });
         removed.then_some(()).ok_or(StorageError::NotFound)
     }
-
-    async fn store_event(
-        &self,
-        event: &Event,
-        routing_id: Option<Uuid>,
-        destination_topic: Option<String>,
-        failure_reason: Option<String>,
-    ) -> Result<(), StorageError> {
-        let stored_event = StoredEvent {
-            id: Uuid::new_v4(),
-            event_id: event.id,
-            event_type: event.event_type.clone(),
-            event_version: event.event_version.clone(),
-            routing_id,
-            destination_topic,
-            failure_reason,
-            stored_at: Utc::now(),
-            event_data: serde_json::to_value(event)?,
-        };
-        self.events
-            .write()
-            .map_err(|_| Self::lock_error("events"))?
-            .push(stored_event);
-        Ok(())
-    }
-
-    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError> {
-        let events = self.events.read().map_err(|_| Self::lock_error("events"))?;
-        Ok(events.iter().find(|event| event.id == id).cloned())
-    }
-
-    async fn get_events_by_type(
-        &self,
-        event_type: &str,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<StoredEvent>, StorageError> {
-        let events = self.events.read().map_err(|_| Self::lock_error("events"))?;
-        let mut matching: Vec<_> = events
-            .iter()
-            .filter(|event| event.event_type == event_type)
-            .cloned()
-            .collect();
-        matching.sort_by_key(|event| std::cmp::Reverse(event.stored_at));
-        Ok(Self::page(&matching, limit, offset))
-    }
-
-    async fn get_events_by_routing(
-        &self,
-        routing_id: Uuid,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<StoredEvent>, StorageError> {
-        let events = self.events.read().map_err(|_| Self::lock_error("events"))?;
-        let mut matching: Vec<_> = events
-            .iter()
-            .filter(|event| event.routing_id == Some(routing_id))
-            .cloned()
-            .collect();
-        matching.sort_by_key(|event| std::cmp::Reverse(event.stored_at));
-        Ok(Self::page(&matching, limit, offset))
-    }
-
-    async fn get_sample_events(
-        &self,
-        limit: i64,
-        offset: i64,
-    ) -> Result<(Vec<Event>, i64), StorageError> {
-        let events = self.events.read().map_err(|_| Self::lock_error("events"))?;
-        let mut sorted = events.clone();
-        sorted.sort_by_key(|event| std::cmp::Reverse(event.stored_at));
-        let total = sorted.len() as i64;
-        let events = Self::page(&sorted, limit, offset)
-            .into_iter()
-            .map(|stored| serde_json::from_value(stored.event_data))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok((events, total))
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::model::event::Data;
     use crate::model::expressions::{Condition, StringExpression};
+    use crate::model::topic::Topic;
 
     use super::*;
 
@@ -382,20 +252,6 @@ mod tests {
             event_type_condition: Condition::ONE(StringExpression::Equals {
                 value: "event".to_string(),
             }),
-        }
-    }
-
-    fn event(event_type: &str) -> Event {
-        Event {
-            id: Uuid::new_v4(),
-            event_type: event_type.to_string(),
-            event_version: Some("1.0".to_string()),
-            metadata: HashMap::new(),
-            transport_metadata: None,
-            data_type: None,
-            data: Data::String("payload".to_string()),
-            timestamp: None,
-            origin: Some("test".to_string()),
         }
     }
 
@@ -429,37 +285,5 @@ mod tests {
             storage.delete_rule(first.id).await,
             Err(StorageError::NotFound)
         ));
-    }
-
-    #[tokio::test]
-    async fn stores_and_queries_events() {
-        let storage = InMemoryStorage::new();
-        let routing_id = Uuid::new_v4();
-        let first = event("first");
-        let second = event("second");
-
-        storage
-            .store_event(&first, Some(routing_id), Some("topic".to_string()), None)
-            .await
-            .unwrap();
-        storage
-            .store_event(&second, None, None, Some("failure".to_string()))
-            .await
-            .unwrap();
-
-        let by_type = storage.get_events_by_type("first", 10, 0).await.unwrap();
-        assert_eq!(by_type.len(), 1);
-        assert_eq!(by_type[0].event_id, first.id);
-
-        let by_routing = storage
-            .get_events_by_routing(routing_id, 10, 0)
-            .await
-            .unwrap();
-        assert_eq!(by_routing.len(), 1);
-        assert_eq!(by_routing[0].event_id, first.id);
-
-        let (sampled, total) = storage.get_sample_events(1, 1).await.unwrap();
-        assert_eq!(total, 2);
-        assert_eq!(sampled, vec![first]);
     }
 }

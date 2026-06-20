@@ -1,29 +1,17 @@
-use serde::{Deserialize, Serialize};
+use crate::model::expressions::{Condition, StringExpression};
+use crate::model::routing::{TopicRoutingRule, TopicValidationConfig};
+use crate::model::topic::Topic;
+use crate::store::storage::{Storage, StorageError};
+use async_trait::async_trait;
 use serde_json;
 use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use uuid::Uuid;
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use serde_json::Value;
-
-use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
-use crate::model::event::Event;
-use crate::model::topic::Topic;
-use crate::store::storage::{Storage, StorageError, StoredEvent};
-use crate::model::expressions::{Condition, StringExpression};
 
 pub struct FileStorage {
     base_path: PathBuf,
-}
-
-#[derive(Serialize, Deserialize)]
-struct FileDatabase {
-    rules: HashMap<Uuid, TopicRoutingRule>,
-    topic_validations: HashMap<String, Vec<TopicValidationConfig>>,
 }
 
 impl FileStorage {
@@ -54,14 +42,6 @@ impl FileStorage {
 
     fn get_validation_path(&self, id: Uuid) -> PathBuf {
         self.get_validations_path().join(format!("{}.json", id))
-    }
-
-    fn get_events_path(&self) -> PathBuf {
-        self.base_path.join("events")
-    }
-
-    fn get_event_path(&self, id: Uuid) -> PathBuf {
-        self.get_events_path().join(format!("{}.json", id))
     }
 }
 
@@ -131,7 +111,9 @@ impl Storage for FileStorage {
         Ok(())
     }
 
-    async fn get_all_topic_validations(&self) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
+    async fn get_all_topic_validations(
+        &self,
+    ) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
         let validations_path = self.get_validations_path();
         if !validations_path.exists() {
             return Ok(HashMap::new());
@@ -143,7 +125,8 @@ impl Storage for FileStorage {
             if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
                 let content = fs::read_to_string(entry.path())?;
                 let validation: TopicValidationConfig = serde_json::from_str(&content)?;
-                validations.entry(validation.topic.as_str().to_string())
+                validations
+                    .entry(validation.topic.as_str().to_string())
                     .or_insert_with(Vec::new)
                     .push(validation);
             }
@@ -158,100 +141,6 @@ impl Storage for FileStorage {
         }
         fs::remove_file(path)?;
         Ok(())
-    }
-
-    async fn store_event(&self, event: &Event, routing_id: Option<Uuid>, destination_topic: Option<String>, failure_reason: Option<String>) -> Result<(), StorageError> {
-        self.ensure_dir(&self.get_events_path())?;
-        
-        let stored_event = StoredEvent {
-            id: Uuid::new_v4(),
-            event_id: event.id,
-            event_type: event.event_type.clone(),
-            event_version: event.event_version.clone(),
-            routing_id,
-            destination_topic,
-            failure_reason,
-            stored_at: Utc::now(),
-            event_data: match &event.data {
-                crate::model::event::Data::Json(data) => serde_json::to_value(data)?,
-                crate::model::event::Data::String(s) => serde_json::to_value(s)?,
-                crate::model::event::Data::Binary(b) => serde_json::to_value(b)?,
-            },
-        };
-
-        let path = self.get_event_path(stored_event.id);
-        let json = serde_json::to_string_pretty(&stored_event)?;
-        fs::write(path, json)?;
-        Ok(())
-    }
-
-    async fn get_event(&self, id: Uuid) -> Result<Option<StoredEvent>, StorageError> {
-        let path = self.get_event_path(id);
-        if !path.exists() {
-            return Ok(None);
-        }
-        let content = fs::read_to_string(path)?;
-        let event: StoredEvent = serde_json::from_str(&content)?;
-        Ok(Some(event))
-    }
-
-    async fn get_events_by_type(&self, event_type: &str, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
-        let events_path = self.get_events_path();
-        if !events_path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let mut events = Vec::new();
-        for entry in fs::read_dir(events_path)? {
-            let entry = entry?;
-            if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
-                let content = fs::read_to_string(entry.path())?;
-                let event: StoredEvent = serde_json::from_str(&content)?;
-                if event.event_type == event_type {
-                    events.push(event);
-                }
-            }
-        }
-
-        // Sort by stored_at in descending order
-        events.sort_by(|a, b| b.stored_at.cmp(&a.stored_at));
-
-        // Apply pagination
-        let start = offset as usize;
-        let end = (offset + limit) as usize;
-        Ok(events.into_iter().skip(start).take(end - start).collect())
-    }
-
-    async fn get_events_by_routing(&self, routing_id: Uuid, limit: i64, offset: i64) -> Result<Vec<StoredEvent>, StorageError> {
-        let events_path = self.get_events_path();
-        if !events_path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let mut events = Vec::new();
-        for entry in fs::read_dir(events_path)? {
-            let entry = entry?;
-            if entry.path().extension().and_then(|s| s.to_str()) == Some("json") {
-                let content = fs::read_to_string(entry.path())?;
-                let event: StoredEvent = serde_json::from_str(&content)?;
-                if event.routing_id == Some(routing_id) {
-                    events.push(event);
-                }
-            }
-        }
-
-        // Sort by stored_at in descending order
-        events.sort_by(|a, b| b.stored_at.cmp(&a.stored_at));
-
-        // Apply pagination
-        let start = offset as usize;
-        let end = (offset + limit) as usize;
-        Ok(events.into_iter().skip(start).take(end - start).collect())
-    }
-
-    async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), StorageError> {
-        // File storage doesn't support event sampling
-        Ok((Vec::new(), 0))
     }
 }
 

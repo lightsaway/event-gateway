@@ -25,7 +25,8 @@ pub async fn static_handler(uri: Uri) -> impl IntoResponse {
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, mime.as_ref())],
                 content.data,
-            ).into_response()
+            )
+                .into_response()
         }
         None => {
             if path.contains('.') {
@@ -45,4 +46,4 @@ async fn index_html() -> Response {
 
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, "404 Not Found").into_response()
-} 
+}

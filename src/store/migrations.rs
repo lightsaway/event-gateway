@@ -1,5 +1,5 @@
+use log::{error, info};
 use std::path::Path;
-use log::{info, error};
 use tokio_postgres::NoTls;
 
 use crate::configuration::PostgresDatabaseConfig;
@@ -12,10 +12,10 @@ mod embedded {
 
 pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), StorageError> {
     info!("Running database migrations...");
-    
+
     // Parse endpoint which contains both host and port
     let (host, port) = parse_endpoint(&config.endpoint);
-    
+
     // Connect to the database
     let (mut client, connection) = tokio_postgres::connect(
         &format!(
@@ -39,11 +39,13 @@ pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), Stora
     embedded::migrations::runner()
         .run_async(&mut client)
         .await
-        .map_err(|e| StorageError::IoError(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Migration error: {}", e),
-        )))?;
-    
+        .map_err(|e| {
+            StorageError::IoError(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Migration error: {}", e),
+            ))
+        })?;
+
     info!("Database migrations completed successfully");
     Ok(())
 }
@@ -52,9 +54,12 @@ pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), Stora
 fn parse_endpoint(endpoint: &str) -> (String, u16) {
     if let Some(colon_pos) = endpoint.find(':') {
         let (host, port_str) = endpoint.split_at(colon_pos);
-        let port = port_str.trim_start_matches(':').parse::<u16>().unwrap_or(5432);
+        let port = port_str
+            .trim_start_matches(':')
+            .parse::<u16>()
+            .unwrap_or(5432);
         (host.to_string(), port)
     } else {
         (endpoint.to_string(), 5432) // Default PostgreSQL port
     }
-} 
+}

@@ -5,7 +5,7 @@ use rumqttc::{AsyncClient, MqttOptions, QoS};
 use serde::Deserialize;
 use std::time::Duration;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum QosLevel {
     AtMostOnce,
@@ -23,7 +23,7 @@ impl From<QosLevel> for QoS {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MqttPublisherConfig {
     pub host: String,
     pub port: u16,
@@ -68,8 +68,8 @@ impl MqttPublisher {
 #[async_trait]
 impl Publisher<Event> for MqttPublisher {
     async fn publish_one(&self, topic: &str, payload: Event) -> Result<(), PublisherError> {
-        let payload_json = serde_json::to_string(&payload)
-            .map_err(|e| PublisherError::Generic(e.to_string()))?;
+        let payload_json =
+            serde_json::to_string(&payload).map_err(|e| PublisherError::Generic(e.to_string()))?;
 
         self.client
             .publish(topic, self.qos, self.retain, payload_json)

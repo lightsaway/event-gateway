@@ -28,13 +28,6 @@ impl fmt::Display for AppConfig {
 pub struct GatewayConfig {
     pub metrics_enabled: bool,
     pub publisher: PublisherConfig,
-    pub sampling_enabled: bool,
-    #[serde(default = "default_sampling_threshold")]
-    pub sampling_threshold: f64,
-}
-
-fn default_sampling_threshold() -> f64 {
-    100.0 // Store all events by default
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,7 +42,7 @@ pub struct ApiConfig {
     pub jwt_auth: Option<JwtAuthConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum PublisherConfig {
     NoOp,
@@ -63,7 +56,7 @@ pub struct ServerConfig {
     pub port: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DatabaseConfig {
     File(FileDatabaseConfig),
@@ -71,17 +64,17 @@ pub enum DatabaseConfig {
     Postgres(PostgresDatabaseConfig),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct FileDatabaseConfig {
     pub path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct InMemoryDatabaseConfig {
     pub initial_data_json: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct PostgresDatabaseConfig {
     pub username: String,
     pub password: String,
@@ -131,8 +124,6 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
-            sampling_enabled = true
-            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
             [api]
@@ -165,8 +156,6 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
-            sampling_enabled = true
-            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
 
@@ -200,8 +189,6 @@ mod tests {
 
             [gateway]
             metrics_enabled = true
-            sampling_enabled = true
-            sampling_rate = 0.1
             [gateway.publisher]
             type = "noOp"
             [api]

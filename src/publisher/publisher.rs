@@ -1,7 +1,7 @@
-use std::error::Error;
-use async_trait::async_trait;
 use crate::model::event::Event;
+use async_trait::async_trait;
 use log::info;
+use std::error::Error;
 
 #[derive(Debug)]
 pub enum PublisherError {
@@ -10,7 +10,7 @@ pub enum PublisherError {
 
 #[async_trait]
 pub trait Publisher<T>: Send + Sync {
-   async fn publish_one(&self, topic: &str, payload: T) -> Result<(), PublisherError>;
+    async fn publish_one(&self, topic: &str, payload: T) -> Result<(), PublisherError>;
 }
 
 pub struct NoOpPublisher;

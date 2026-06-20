@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { cn } from '../lib/utils';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,15 +20,6 @@ export function Layout({ children }: LayoutProps) {
             <h1 className="text-2xl font-bold">Event Gateway</h1>
           </div>
           <nav className="space-y-1 px-4">
-            <Link
-              to="/events"
-              className={cn(
-                'flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                'text-muted-foreground hover:text-foreground hover:bg-accent'
-              )}
-            >
-              Events
-            </Link>
             <Link
               to="/routing-rules"
               className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
@@ -70,4 +60,4 @@ export function Layout({ children }: LayoutProps) {
       </div>
     </div>
   );
-} 
+}
