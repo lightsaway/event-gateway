@@ -17,10 +17,10 @@ impl fmt::Display for TopicValidationError {
         match self {
             TopicValidationError::Empty => write!(f, "Topic cannot be empty"),
             TopicValidationError::InvalidCharacters(chars) => {
-                write!(f, "Topic contains invalid characters: {}", chars)
+                write!(f, "Topic contains invalid characters: {chars}")
             }
             TopicValidationError::TooLong(len) => {
-                write!(f, "Topic is too long: {} characters (max: 255)", len)
+                write!(f, "Topic is too long: {len} characters (max: 255)")
             }
         }
     }

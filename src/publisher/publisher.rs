@@ -1,12 +1,22 @@
 use crate::model::event::Event;
 use async_trait::async_trait;
 use log::info;
-use std::error::Error;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum PublisherError {
     Generic(String),
 }
+
+impl fmt::Display for PublisherError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PublisherError::Generic(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for PublisherError {}
 
 #[async_trait]
 pub trait Publisher<T>: Send + Sync {
@@ -20,10 +30,7 @@ impl Publisher<Event> for NoOpPublisher {
     async fn publish_one(&self, topic: &str, payload: Event) -> Result<(), PublisherError> {
         let event_json =
             serde_json::to_string(&payload).map_err(|e| PublisherError::Generic(e.to_string()))?;
-        info!(
-            "published to topic: {:?} and event: {:?}",
-            topic, event_json
-        );
+        info!("published to topic: {topic:?} and event: {event_json:?}");
         Ok(())
     }
 }

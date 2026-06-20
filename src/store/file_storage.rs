@@ -1,6 +1,4 @@
-use crate::model::expressions::{Condition, StringExpression};
 use crate::model::routing::{TopicRoutingRule, TopicValidationConfig};
-use crate::model::topic::Topic;
 use crate::store::storage::{Storage, StorageError};
 use async_trait::async_trait;
 use serde_json;
@@ -33,7 +31,7 @@ impl FileStorage {
     }
 
     fn get_rule_path(&self, id: Uuid) -> PathBuf {
-        self.get_rules_path().join(format!("{}.json", id))
+        self.get_rules_path().join(format!("{id}.json"))
     }
 
     fn get_validations_path(&self) -> PathBuf {
@@ -41,7 +39,7 @@ impl FileStorage {
     }
 
     fn get_validation_path(&self, id: Uuid) -> PathBuf {
-        self.get_validations_path().join(format!("{}.json", id))
+        self.get_validations_path().join(format!("{id}.json"))
     }
 }
 
@@ -53,16 +51,6 @@ impl Storage for FileStorage {
         let json = serde_json::to_string_pretty(rule)?;
         fs::write(path, json)?;
         Ok(())
-    }
-
-    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
-        let path = self.get_rule_path(id);
-        if !path.exists() {
-            return Ok(None);
-        }
-        let content = fs::read_to_string(path)?;
-        let rule: TopicRoutingRule = serde_json::from_str(&content)?;
-        Ok(Some(rule))
     }
 
     async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
@@ -147,6 +135,8 @@ impl Storage for FileStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::expressions::{Condition, StringExpression};
+    use crate::model::topic::Topic;
     use tempfile::TempDir;
     use uuid::Uuid;
 
@@ -163,17 +153,24 @@ mod tests {
         }
     }
 
+    #[tokio::test]
     async fn test_file_storage_add_and_get_rule() -> Result<(), StorageError> {
         let temp_dir = TempDir::new().unwrap();
         let storage = FileStorage::new(temp_dir.path());
         let rule = create_dummy_rule();
         storage.add_rule(&rule).await?;
-        let retrieved = storage.get_rule(rule.id).await?.unwrap();
+        let retrieved = storage
+            .get_all_rules()
+            .await?
+            .into_iter()
+            .find(|item| item.id == rule.id)
+            .unwrap();
         assert_eq!(retrieved.id, rule.id);
         assert_eq!(retrieved.topic, rule.topic);
         Ok(())
     }
 
+    #[tokio::test]
     async fn test_file_storage_get_all_rules() -> Result<(), StorageError> {
         let temp_dir = TempDir::new().unwrap();
         let storage = FileStorage::new(temp_dir.path());
@@ -186,6 +183,7 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
     async fn test_file_storage_update_rule() -> Result<(), StorageError> {
         let temp_dir = TempDir::new().unwrap();
         let storage = FileStorage::new(temp_dir.path());
@@ -193,18 +191,28 @@ mod tests {
         storage.add_rule(&rule).await?;
         rule.topic = Topic::new("updated_topic").unwrap();
         storage.update_rule(rule.id, &rule).await?;
-        let retrieved = storage.get_rule(rule.id).await?.unwrap();
+        let retrieved = storage
+            .get_all_rules()
+            .await?
+            .into_iter()
+            .find(|item| item.id == rule.id)
+            .unwrap();
         assert_eq!(retrieved.topic, Topic::new("updated_topic").unwrap());
         Ok(())
     }
 
+    #[tokio::test]
     async fn test_file_storage_delete_rule() -> Result<(), StorageError> {
         let temp_dir = TempDir::new().unwrap();
         let storage = FileStorage::new(temp_dir.path());
         let rule = create_dummy_rule();
         storage.add_rule(&rule).await?;
         storage.delete_rule(rule.id).await?;
-        assert!(storage.get_rule(rule.id).await?.is_none());
+        assert!(storage
+            .get_all_rules()
+            .await?
+            .iter()
+            .all(|item| item.id != rule.id));
         Ok(())
     }
 }

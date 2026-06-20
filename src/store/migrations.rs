@@ -1,5 +1,4 @@
 use log::{error, info};
-use std::path::Path;
 use tokio_postgres::NoTls;
 
 use crate::configuration::PostgresDatabaseConfig;
@@ -25,13 +24,13 @@ pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), Stora
         NoTls,
     )
     .await
-    .map_err(|e| StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+    .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
     // The connection object performs the actual communication with the database,
     // so spawn it off to run on its own
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            error!("Database connection error: {}", e);
+            error!("Database connection error: {e}");
         }
     });
 
@@ -40,10 +39,7 @@ pub async fn run_migrations(config: &PostgresDatabaseConfig) -> Result<(), Stora
         .run_async(&mut client)
         .await
         .map_err(|e| {
-            StorageError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Migration error: {}", e),
-            ))
+            StorageError::IoError(std::io::Error::other(format!("Migration error: {e}")))
         })?;
 
     info!("Database migrations completed successfully");

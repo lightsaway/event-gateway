@@ -12,8 +12,6 @@ use crate::{
     store::storage::{Storage, StorageError},
 };
 
-use futures::TryFutureExt;
-use jsonschema::{Draft, JSONSchema};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
@@ -47,9 +45,9 @@ pub enum GatewayError {
 impl std::fmt::Display for GatewayError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GatewayError::SchemaInvalid(msg) => write!(f, "Schema validation failed: {}", msg),
-            GatewayError::NoTopicToRoute(msg) => write!(f, "No topic to route: {}", msg),
-            GatewayError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            GatewayError::SchemaInvalid(msg) => write!(f, "Schema validation failed: {msg}"),
+            GatewayError::NoTopicToRoute(msg) => write!(f, "No topic to route: {msg}"),
+            GatewayError::InternalError(msg) => write!(f, "Internal error: {msg}"),
         }
     }
 }
@@ -73,19 +71,19 @@ impl EventGateway {
 
 impl From<StorageError> for GatewayError {
     fn from(e: StorageError) -> Self {
-        GatewayError::InternalError(format!("{:?}", e)) // Convert store error to an internal error
+        GatewayError::InternalError(e.to_string())
     }
 }
 
 impl From<Box<dyn std::error::Error>> for GatewayError {
     fn from(e: Box<dyn std::error::Error>) -> Self {
-        GatewayError::InternalError(format!("{:?}", e)) // Convert store error to an internal error
+        GatewayError::InternalError(e.to_string())
     }
 }
 
 impl From<PublisherError> for GatewayError {
     fn from(e: PublisherError) -> Self {
-        GatewayError::InternalError(format!("{:?}", e)) // Convert store error to an internal error
+        GatewayError::InternalError(e.to_string())
     }
 }
 
@@ -99,7 +97,7 @@ impl GateWay for EventGateway {
             .map_err(GatewayError::from)?;
         let routings = TopicRoutings { rules };
 
-        match routings.route(&event) {
+        match routings.route(event) {
             Some(routing) => {
                 let topic_schemas = self
                     .store
@@ -116,7 +114,7 @@ impl GateWay for EventGateway {
                 let validation_errors = match &event.data {
                     Data::Json(j) => {
                         let json = Value::Object(
-                            j.into_iter()
+                            j.iter()
                                 .map(|(k, v)| (k.clone(), v.clone()))
                                 .collect::<Map<_, _>>(),
                         );

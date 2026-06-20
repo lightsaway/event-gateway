@@ -7,6 +7,7 @@ use std::time::Duration;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
+#[allow(clippy::enum_variant_names)]
 pub enum QosLevel {
     AtMostOnce,
     AtLeastOnce,
@@ -52,7 +53,7 @@ impl MqttPublisher {
         tokio::spawn(async move {
             loop {
                 if let Err(e) = eventloop.poll().await {
-                    eprintln!("MQTT Event Loop Error: {:?}", e);
+                    eprintln!("MQTT Event Loop Error: {e:?}");
                 }
             }
         });

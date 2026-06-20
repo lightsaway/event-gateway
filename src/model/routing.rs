@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use super::{event::DataType, expressions::Condition, topic::Topic};
+use super::{expressions::Condition, topic::Topic};
 use jsonschema::{Draft, JSONSchema};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
@@ -20,12 +20,6 @@ pub struct ValidationError {
 }
 
 impl Schema {
-    pub fn is_valid(&self, data: &Value) -> bool {
-        match self {
-            Schema::Json(schema) => schema.compiled_schema.is_valid(data),
-        }
-    }
-
     pub fn validate(&self, data: &Value) -> Result<(), Vec<ValidationError>> {
         match self {
             Schema::Json(schema) => schema.validate(data),
@@ -61,7 +55,7 @@ impl Clone for JSchema {
 
         // Clone the raw schema which is just a `serde_json::Value`
         let raw_schema = self.raw_schema.clone();
-        let draft_version = self.draft_version.clone();
+        let draft_version = self.draft_version;
 
         // Create a new `JSchema` with the recompiled schema and cloned raw schema
         JSchema {
@@ -204,7 +198,7 @@ mod tests {
             description: Some("A schema.".into()),
             schema: Schema::Json(JSchema {
                 compiled_schema: JSONSchema::compile(&raw_schema).unwrap(),
-                raw_schema: raw_schema,
+                raw_schema,
                 draft_version: Draft::Draft7,
             }),
             event_type: "example".into(),
@@ -213,7 +207,7 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&schema).unwrap();
-        print!("{}", serialized);
+        print!("{serialized}");
         let deserialized: DataSchema = serde_json::from_str(&serialized).unwrap();
         assert_eq!(schema, deserialized);
     }
@@ -236,7 +230,7 @@ mod tests {
 
         let schema = Schema::Json(JSchema {
             compiled_schema: JSONSchema::compile(&raw_schema).unwrap(),
-            raw_schema: raw_schema,
+            raw_schema,
             draft_version: Draft::Draft7,
         });
 

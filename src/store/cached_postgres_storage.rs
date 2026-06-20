@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tokio::time;
 use uuid::Uuid;
 
-use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
+use crate::model::routing::{TopicRoutingRule, TopicValidationConfig};
 use crate::store::postgres_storage::PostgresStorage;
 use crate::store::storage::{Storage, StorageError};
 
@@ -99,7 +99,7 @@ impl CachedPostgresStorage {
                     debug!("Cache refreshed successfully");
                 }
                 Err(e) => {
-                    warn!("Failed to refresh cache: {:?}", e);
+                    warn!("Failed to refresh cache: {e:?}");
                 }
             }
 
@@ -179,28 +179,6 @@ impl Storage for CachedPostgresStorage {
         self.force_refresh().await
     }
 
-    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
-        // Check if cache needs refresh
-        let needs_refresh = {
-            let last_refresh = self.last_refresh.lock().unwrap();
-            last_refresh.elapsed() >= self.refresh_interval
-        };
-
-        if needs_refresh {
-            // Try to refresh in the background
-            let storage_clone = self.clone();
-            tokio::spawn(async move {
-                if let Err(e) = storage_clone.force_refresh().await {
-                    warn!("Background cache refresh failed: {:?}", e);
-                }
-            });
-        }
-
-        // Get from cache
-        let rules = self.rules_cache.read().unwrap();
-        Ok(rules.iter().find(|r| r.id == id).cloned())
-    }
-
     async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
         // Check if cache needs refresh
         let needs_refresh = {
@@ -213,7 +191,7 @@ impl Storage for CachedPostgresStorage {
             let storage_clone = self.clone();
             tokio::spawn(async move {
                 if let Err(e) = storage_clone.force_refresh().await {
-                    warn!("Background cache refresh failed: {:?}", e);
+                    warn!("Background cache refresh failed: {e:?}");
                 }
             });
         }
@@ -261,7 +239,7 @@ impl Storage for CachedPostgresStorage {
             let storage_clone = self.clone();
             tokio::spawn(async move {
                 if let Err(e) = storage_clone.force_refresh().await {
-                    warn!("Background cache refresh failed: {:?}", e);
+                    warn!("Background cache refresh failed: {e:?}");
                 }
             });
         }

@@ -13,12 +13,12 @@ impl TopicRouter for TopicRoutings {
         for rule in &self.rules {
             let type_match = rule.event_type_condition.matches(&event.event_type);
             let version_match = match (&rule.event_version_condition, &event.event_version) {
-                (Some(c), Some(v)) => c.matches(&v),
+                (Some(c), Some(v)) => c.matches(v),
                 (None, _) => true,
                 _ => false,
             };
             if type_match && version_match {
-                return Some(&rule);
+                return Some(rule);
             }
         }
         None
@@ -34,8 +34,6 @@ mod tests {
         event::Data, event::Event, expressions::Condition, expressions::StringExpression,
         topic::Topic,
     };
-
-    use super::*;
 
     #[test]
     fn test_topic_router() {

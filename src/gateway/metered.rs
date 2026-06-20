@@ -1,15 +1,11 @@
 use crate::{
     gateway::gateway::{GateWay, GatewayError},
     model::event::Event,
-    model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
+    model::routing::{TopicRoutingRule, TopicValidationConfig},
 };
 use async_trait::async_trait;
-use prometheus::{
-    register_counter_vec, register_histogram_vec, CounterVec, Encoder, HistogramVec, Opts,
-    TextEncoder,
-};
+use prometheus::{register_counter_vec, register_histogram_vec, CounterVec, HistogramVec, Opts};
 use std::collections::HashMap;
-use std::error::Error;
 use uuid::Uuid;
 
 pub struct MeteredEventGateway<T: GateWay> {
@@ -41,10 +37,6 @@ where
             counters,
             histogram,
         })
-    }
-
-    pub fn inner(&self) -> &T {
-        &self.gateway
     }
 }
 

@@ -85,4 +85,3 @@ metadata_field_as_key = "user_id"
 prefix = "/api/v1"
 [api.jwt_auth]
 jwks_url = "https://samples.auth0.com/.well-known/jwks.json"
-refresh_interval_secs = 300

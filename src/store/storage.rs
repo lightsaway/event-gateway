@@ -19,17 +19,29 @@ pub enum StorageError {
     Other(String),
 }
 
-impl Error for StorageError {}
+impl Error for StorageError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            StorageError::IoError(error) => Some(error),
+            StorageError::SerializationError(error) => Some(error),
+            StorageError::DatabaseError(error) => Some(error),
+            StorageError::PoolError(error) => Some(error),
+            StorageError::NotFound | StorageError::Other(_) => None,
+        }
+    }
+}
 
 impl fmt::Display for StorageError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            StorageError::IoError(_) => write!(f, "connection error occurred"),
+        match self {
+            StorageError::IoError(error) => write!(f, "I/O error: {error}"),
             StorageError::NotFound => write!(f, "item not found"),
-            StorageError::SerializationError(_) => write!(f, "serialization error occurred"),
-            StorageError::DatabaseError(_) => write!(f, "database error occurred"),
-            StorageError::PoolError(_) => write!(f, "connection pool error occurred"),
-            StorageError::Other(ref msg) => write!(f, "other error: {}", msg),
+            StorageError::SerializationError(error) => {
+                write!(f, "serialization error: {error}")
+            }
+            StorageError::DatabaseError(error) => write!(f, "database error: {error}"),
+            StorageError::PoolError(error) => write!(f, "connection pool error: {error}"),
+            StorageError::Other(msg) => write!(f, "other error: {msg}"),
         }
     }
 }
@@ -61,7 +73,6 @@ impl From<deadpool_postgres::PoolError> for StorageError {
 #[async_trait]
 pub trait Storage: Send + Sync {
     async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError>;
-    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError>;
     async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError>;
     async fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError>;
     async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError>;
@@ -99,25 +110,6 @@ impl InMemoryStorage {
         }
     }
 
-    pub fn with_initial_routing_rules(self, rules: Vec<TopicRoutingRule>) -> Self {
-        self.routing_rules
-            .write()
-            .expect("in-memory routing rules lock poisoned")
-            .extend(rules);
-        self
-    }
-
-    pub fn with_initial_topic_validations(
-        self,
-        validations: HashMap<String, Vec<TopicValidationConfig>>,
-    ) -> Self {
-        self.topic_validations
-            .write()
-            .expect("in-memory topic validations lock poisoned")
-            .extend(validations);
-        self
-    }
-
     fn lock_error(name: &str) -> StorageError {
         StorageError::Other(format!("in-memory {name} lock poisoned"))
     }
@@ -139,14 +131,6 @@ impl Storage for InMemoryStorage {
         rules.push(rule.clone());
         rules.sort_by_key(|item| (item.order, item.id));
         Ok(())
-    }
-
-    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
-        let rules = self
-            .routing_rules
-            .read()
-            .map_err(|_| Self::lock_error("routing rules"))?;
-        Ok(rules.iter().find(|rule| rule.id == id).cloned())
     }
 
     async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
@@ -277,10 +261,23 @@ mod tests {
         let mut updated = first.clone();
         updated.order = 0;
         storage.update_rule(first.id, &updated).await.unwrap();
-        assert_eq!(storage.get_rule(first.id).await.unwrap(), Some(updated));
+        assert_eq!(
+            storage
+                .get_all_rules()
+                .await
+                .unwrap()
+                .into_iter()
+                .find(|item| item.id == first.id),
+            Some(updated)
+        );
 
         storage.delete_rule(first.id).await.unwrap();
-        assert_eq!(storage.get_rule(first.id).await.unwrap(), None);
+        assert!(storage
+            .get_all_rules()
+            .await
+            .unwrap()
+            .iter()
+            .all(|item| item.id != first.id));
         assert!(matches!(
             storage.delete_rule(first.id).await,
             Err(StorageError::NotFound)

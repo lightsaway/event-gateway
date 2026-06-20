@@ -55,6 +55,7 @@ impl PartialEq for StringExpression {
 
 #[derive(Clone, Serialize, PartialEq, Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Condition {
     AND(Vec<Condition>),
     OR(Vec<Condition>),

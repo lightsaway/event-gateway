@@ -19,8 +19,7 @@ impl fmt::Display for AppConfig {
         writeln!(f, "=============")?;
         writeln!(f, "Debug mode: {}", self.debug_mode)?;
         writeln!(f, "Server: {}:{}", self.server.host, self.server.port)?;
-        writeln!(f, "Database: {:?}", self.database)?;
-        writeln!(f, "Gateway: {:?}", self.gateway)
+        writeln!(f, "Metrics enabled: {}", self.gateway.metrics_enabled)
     }
 }
 
@@ -33,7 +32,6 @@ pub struct GatewayConfig {
 #[derive(Debug, Deserialize)]
 pub struct JwtAuthConfig {
     pub jwks_url: String,
-    pub refresh_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -97,9 +95,6 @@ fn default_dbname() -> String {
 mod tests {
     use super::*;
     use config::{Config, ConfigError, FileFormat};
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
 
     // Helper function to deserialize AppConfig from a string
     fn config_from_str(input: &str, format: FileFormat) -> Result<AppConfig, ConfigError> {

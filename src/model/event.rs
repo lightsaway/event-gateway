@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -111,7 +110,7 @@ mod tests {
         assert!(serialized.contains("\"test_type\""));
         assert!(serialized.contains("\"author\":\"Alice\""));
         let deserialized: Event = serde_json::from_str(&serialized).expect("Failed to deserialize");
-        println!("{}", serialized);
+        println!("{serialized}");
         assert_eq!(deserialized, event);
     }
 }

@@ -16,21 +16,15 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use futures::Future;
 use hyper::header::USER_AGENT;
 use hyper::StatusCode;
-use jwks::Jwks;
-use jwt_authorizer::{
-    Authorizer, IntoLayer, JwtAuthorizer, Refresh, RefreshStrategy, RegisteredClaims,
-};
-use log;
+use jwt_authorizer::{Authorizer, IntoLayer, JwtAuthorizer, RegisteredClaims};
+use log::{error, warn};
 use prometheus::{Encoder, TextEncoder};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower::{Service, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
@@ -129,7 +123,6 @@ pub async fn app_router(
     let prefix = config.prefix.clone().unwrap_or("/".to_string());
     let router = match &config.jwt_auth {
         Some(cfg) => {
-            let jwks = Jwks::from_jwks_url(&cfg.jwks_url).await.unwrap();
             let authorizer: Authorizer<RegisteredClaims> =
                 JwtAuthorizer::from_jwks_url(&cfg.jwks_url)
                     .build()
@@ -223,21 +216,30 @@ async fn handle_event(
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
         Err(err) => match err {
-            crate::gateway::gateway::GatewayError::SchemaInvalid(err) => Ok(Response::builder()
-                .status(400)
-                .header("Content-Type", "application/json")
-                .body(Body::from(r#"{"error": "schema validation failed"}"#))
-                .unwrap()),
-            crate::gateway::gateway::GatewayError::NoTopicToRoute(err) => Ok(Response::builder()
-                .status(406)
-                .header("Content-Type", "application/json")
-                .body(Body::from(r#"{"error": "no destination found"}"#))
-                .unwrap()),
-            crate::gateway::gateway::GatewayError::InternalError(err) => Ok(Response::builder()
-                .status(500)
-                .header("Content-Type", "application/json")
-                .body(Body::from(r#"{"error": "internal server error"}"#))
-                .unwrap()),
+            crate::gateway::gateway::GatewayError::SchemaInvalid(err) => {
+                warn!("Event rejected by schema validation: {err}");
+                Ok(Response::builder()
+                    .status(400)
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(r#"{"error": "schema validation failed"}"#))
+                    .unwrap())
+            }
+            crate::gateway::gateway::GatewayError::NoTopicToRoute(err) => {
+                warn!("Event has no routing destination: {err}");
+                Ok(Response::builder()
+                    .status(406)
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(r#"{"error": "no destination found"}"#))
+                    .unwrap())
+            }
+            crate::gateway::gateway::GatewayError::InternalError(err) => {
+                error!("Failed to handle event: {err}");
+                Ok(Response::builder()
+                    .status(500)
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(r#"{"error": "internal server error"}"#))
+                    .unwrap())
+            }
         },
     }
 }
@@ -250,10 +252,7 @@ async fn create_routing_rule(
         Response::builder()
             .status(400)
             .header("Content-Type", "application/json")
-            .body(Body::from(format!(
-                r#"{{"error": "Invalid topic: {}"}}"#,
-                e
-            )))
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {e}"}}"#)))
             .unwrap()
     })?;
 
@@ -272,11 +271,14 @@ async fn create_routing_rule(
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
-        Err(err) => Ok(Response::builder()
-            .status(500)
-            .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"error": "internal server error"}"#))
-            .unwrap()),
+        Err(err) => {
+            error!("Failed to create routing rule: {err}");
+            Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"error": "internal server error"}"#))
+                .unwrap())
+        }
     }
 }
 
@@ -289,10 +291,7 @@ async fn update_routing_rule(
         Response::builder()
             .status(400)
             .header("Content-Type", "application/json")
-            .body(Body::from(format!(
-                r#"{{"error": "Invalid topic: {}"}}"#,
-                e
-            )))
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {e}"}}"#)))
             .unwrap()
     })?;
 
@@ -311,11 +310,14 @@ async fn update_routing_rule(
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
-        Err(err) => Ok(Response::builder()
-            .status(500)
-            .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"error": "internal server error"}"#))
-            .unwrap()),
+        Err(err) => {
+            error!("Failed to update routing rule {id}: {err}");
+            Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"error": "internal server error"}"#))
+                .unwrap())
+        }
     }
 }
 
@@ -330,11 +332,14 @@ async fn delete_routing_rule(
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
-        Err(err) => Ok(Response::builder()
-            .status(500)
-            .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"error": "internal server error"}"#))
-            .unwrap()),
+        Err(err) => {
+            error!("Failed to delete routing rule {id}: {err}");
+            Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"error": "internal server error"}"#))
+                .unwrap())
+        }
     }
 }
 
@@ -346,10 +351,7 @@ async fn create_topic_validation(
         Response::builder()
             .status(400)
             .header("Content-Type", "application/json")
-            .body(Body::from(format!(
-                r#"{{"error": "Invalid topic: {}"}}"#,
-                e
-            )))
+            .body(Body::from(format!(r#"{{"error": "Invalid topic: {e}"}}"#)))
             .unwrap()
     })?;
 
@@ -365,11 +367,14 @@ async fn create_topic_validation(
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
-        Err(err) => Ok(Response::builder()
-            .status(500)
-            .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"error": "internal server error"}"#))
-            .unwrap()),
+        Err(err) => {
+            error!("Failed to create topic validation: {err}");
+            Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"error": "internal server error"}"#))
+                .unwrap())
+        }
     }
 }
 
@@ -383,7 +388,10 @@ async fn read_topic_validations(
             .header("Content-Type", "application/json")
             .body(Body::from(serde_json::to_string(&validations).unwrap()))
             .unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Err(err) => {
+            error!("Failed to read topic validations: {err}");
+            Ok(Response::builder().status(500).body(Body::empty()).unwrap())
+        }
     }
 }
 
@@ -398,11 +406,14 @@ async fn delete_topic_validation(
             .header("Content-Type", "application/json")
             .body(Body::from(r#"{"status": "success"}"#))
             .unwrap()),
-        Err(err) => Ok(Response::builder()
-            .status(500)
-            .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"error": "internal server error"}"#))
-            .unwrap()),
+        Err(err) => {
+            error!("Failed to delete topic validation {id}: {err}");
+            Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"error": "internal server error"}"#))
+                .unwrap())
+        }
     }
 }
 
@@ -414,6 +425,9 @@ async fn read_rules(State(service): State<Arc<GatewayService>>) -> Result<Respon
             .header("Content-Type", "application/json")
             .body(Body::from(serde_json::to_string(&rules).unwrap()))
             .unwrap()),
-        Err(err) => Ok(Response::builder().status(500).body(Body::empty()).unwrap()),
+        Err(err) => {
+            error!("Failed to read routing rules: {err}");
+            Ok(Response::builder().status(500).body(Body::empty()).unwrap())
+        }
     }
 }

@@ -19,9 +19,7 @@ impl PostgresStorage {
         // Run migrations first
         crate::store::migrations::run_migrations(config)
             .await
-            .map_err(|e| {
-                StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-            })?;
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let mut cfg = Config::new();
 
@@ -33,9 +31,9 @@ impl PostgresStorage {
         cfg.password = Some(config.password.clone());
         cfg.dbname = Some(config.dbname.clone());
 
-        let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let pool = cfg
+            .create_pool(Some(Runtime::Tokio1), NoTls)
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         Ok(PostgresStorage { pool })
     }
@@ -58,9 +56,11 @@ fn parse_endpoint(endpoint: &str) -> (String, u16) {
 #[async_trait]
 impl Storage for PostgresStorage {
     async fn add_rule(&self, rule: &TopicRoutingRule) -> Result<(), StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client.prepare_cached(
             "INSERT INTO routing_rules (id, order_num, topic, description, event_version_condition, event_type_condition) 
@@ -84,40 +84,12 @@ impl Storage for PostgresStorage {
         Ok(())
     }
 
-    async fn get_rule(&self, id: Uuid) -> Result<Option<TopicRoutingRule>, StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
-
-        let stmt = client.prepare_cached(
-            "SELECT id, order_num, topic, description, event_version_condition, event_type_condition 
-             FROM routing_rules WHERE id = $1"
-        ).await?;
-
-        let row = client.query_opt(&stmt, &[&id]).await?;
-
-        if let Some(row) = row {
-            let event_version_condition: Value = row.get("event_version_condition");
-            let event_type_condition: Value = row.get("event_type_condition");
-
-            Ok(Some(TopicRoutingRule {
-                id: row.get("id"),
-                order: row.get("order_num"),
-                topic: Topic::new(row.get::<_, String>("topic"))
-                    .map_err(|e| StorageError::Other(e.to_string()))?,
-                description: row.get("description"),
-                event_version_condition: serde_json::from_value(event_version_condition)?,
-                event_type_condition: serde_json::from_value(event_type_condition)?,
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
     async fn get_all_rules(&self) -> Result<Vec<TopicRoutingRule>, StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client.prepare_cached(
             "SELECT id, order_num, topic, description, event_version_condition, event_type_condition 
@@ -146,9 +118,11 @@ impl Storage for PostgresStorage {
     }
 
     async fn update_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client
             .prepare_cached(
@@ -182,9 +156,11 @@ impl Storage for PostgresStorage {
     }
 
     async fn delete_rule(&self, id: Uuid) -> Result<(), StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client
             .prepare_cached("DELETE FROM routing_rules WHERE id = $1")
@@ -199,9 +175,11 @@ impl Storage for PostgresStorage {
     }
 
     async fn add_topic_validation(&self, v: &TopicValidationConfig) -> Result<(), StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client
             .prepare_cached("INSERT INTO topic_validations (id, topic, schema) VALUES ($1, $2, $3)")
@@ -220,9 +198,11 @@ impl Storage for PostgresStorage {
     async fn get_all_topic_validations(
         &self,
     ) -> Result<HashMap<String, Vec<TopicValidationConfig>>, StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client
             .prepare_cached("SELECT id, topic, schema FROM topic_validations")
@@ -253,9 +233,11 @@ impl Storage for PostgresStorage {
     }
 
     async fn delete_topic_validation(&self, id: &Uuid) -> Result<(), StorageError> {
-        let client = self.pool.get().await.map_err(|e| {
-            StorageError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e))
-        })?;
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client
             .prepare_cached("DELETE FROM topic_validations WHERE id = $1")
