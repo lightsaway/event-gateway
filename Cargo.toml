@@ -4,7 +4,7 @@ incremental = true
 
 [package]
 name = "event-gateway"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.96"
 description = "HTTP event validation and routing service for PGMQ, Kafka, and MQTT"
