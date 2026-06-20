@@ -1,4 +1,4 @@
-.PHONY: loadtest frontend-dev frontend-build frontend-clean
+.PHONY: loadtest frontend-dev frontend-build frontend-clean ci-quality ci-test ci-audit ci-ui
 
 fe-dev: 
 	cd ui && npm run dev
@@ -60,10 +60,23 @@ frontend-dev:
 	cd ui && npm run dev
 
 frontend-build:
-	cd ui && npm install && npm run build
+	cd ui && npm ci && npm run build
 
 frontend-clean:
 	rm -rf ui/dist
 
 clean: frontend-clean
 	cargo clean
+
+ci-quality:
+	cargo fmt --all -- --check
+	cargo clippy --locked --workspace --all-targets
+
+ci-test:
+	cargo test --locked --workspace --all-targets
+
+ci-audit:
+	cargo audit
+
+ci-ui:
+	cd ui && npm ci && npm audit --omit=dev && npm run build

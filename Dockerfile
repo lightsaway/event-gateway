@@ -1,6 +1,15 @@
-FROM rust:1.75-alpine as builder
+# syntax=docker/dockerfile:1.7
 
-# Install build dependencies
+FROM node:22-alpine AS ui-builder
+
+WORKDIR /app/ui
+COPY ui/package.json ui/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY ui ./
+RUN npm run build
+
+FROM rust:1.88-alpine AS builder
+
 RUN apk add --no-cache \
     pkgconfig \
     musl-dev \
@@ -8,45 +17,60 @@ RUN apk add --no-cache \
     make \
     gcc \
     g++ \
-    libressl-dev
+    openssl-dev \
+    openssl-libs-static \
+    zlib-static \
+    curl-dev \
+    perl \
+    linux-headers
 
-# Create a new empty shell project
 WORKDIR /usr/src/event-gateway
-COPY . .
+ENV OPENSSL_STATIC=1
 
-# Build the application with release optimizations
-RUN cargo build --release
+COPY Cargo.toml Cargo.lock ./
+COPY loadtest/Cargo.toml loadtest/Cargo.toml
+COPY migrations ./migrations
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/usr/src/event-gateway/target \
+    mkdir -p src loadtest/src ui/dist \
+    && printf 'fn main() {}\n' > src/main.rs \
+    && printf 'fn main() {}\n' > loadtest/src/main.rs \
+    && printf '<!doctype html>\n' > ui/dist/index.html \
+    && cargo build --release --locked \
+    && rm -rf src loadtest/src ui
 
-# Create a new stage with a minimal image
-FROM alpine:3.16
+COPY src ./src
+COPY loadtest/src ./loadtest/src
+COPY --from=ui-builder /app/ui/dist ./ui/dist
 
-# Install runtime dependencies
-RUN apk add --no-cache \
-    ca-certificates \
-    libressl
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/usr/src/event-gateway/target \
+    cargo clean --release -p event-gateway \
+    && cargo build --release --locked -p event-gateway \
+    && cp target/release/event-gateway /tmp/event-gateway
 
-# Copy the build artifact from the builder stage
-COPY --from=builder /usr/src/event-gateway/target/release/event-gateway /usr/local/bin/event-gateway
+FROM alpine:3.21
 
-# Create a non-root user to run the application
-RUN adduser -D -u 1000 event-gateway
+RUN apk add --no-cache ca-certificates libgcc
 
-# Create config directory and copy config file
-RUN mkdir -p /etc/event-gateway
+COPY --from=builder /tmp/event-gateway /usr/local/bin/event-gateway
+
+RUN adduser -D -u 1000 event-gateway \
+    && mkdir -p /etc/event-gateway \
+    && chown -R event-gateway:event-gateway /etc/event-gateway
+
 COPY configs/minimal-config.toml /etc/event-gateway/config.toml
-RUN chown -R event-gateway:event-gateway /etc/event-gateway
 
 USER event-gateway
-
-# Set the working directory
 WORKDIR /home/event-gateway
 
-# Expose the port the app runs on
 EXPOSE 8080
-
-# Set environment variables
 ENV RUST_LOG=info
 ENV APP_CONFIG_PATH=/etc/event-gateway/config.toml
 
-# Run the application
-CMD ["event-gateway"] 
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:8080/api/v1/health-check || exit 1
+
+CMD ["event-gateway"]

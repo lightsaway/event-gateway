@@ -1,4 +1,3 @@
-#![allow(warnings)]
 mod configuration;
 mod gateway;
 mod http;
