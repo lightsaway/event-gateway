@@ -5,6 +5,9 @@
 # Rust build artifacts
 target/
 **/*.rs.bk
+node_modules/
+ui/node_modules/
+book/
 
 # IDE and editor files
 .vscode/
@@ -24,4 +27,4 @@ docker-compose.yml
 .dockerignore
 
 # Other
-.DS_Store 
+.DS_Store

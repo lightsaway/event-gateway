@@ -6,6 +6,8 @@ incremental = true
 name = "event-gateway"
 version = "0.1.0"
 edition = "2021"
+description = "HTTP event validation and routing service for PGMQ, Kafka, and MQTT"
+repository = "https://github.com/lightsaway/event-gateway"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

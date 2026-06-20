@@ -1,0 +1,74 @@
+version: 2
+
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: America/Edmonton
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - rust
+    groups:
+      rust-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /ui
+    schedule:
+      interval: monthly
+      time: "09:15"
+      timezone: America/Edmonton
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - ui
+    groups:
+      ui-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:30"
+      timezone: America/Edmonton
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:45"
+      timezone: America/Edmonton
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - docker
+    groups:
+      containers-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
