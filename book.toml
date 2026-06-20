@@ -1,0 +1,22 @@
+[book]
+title = "Event Gateway"
+description = "Documentation for Event Gateway, an HTTP event validation and routing service."
+authors = ["Event Gateway Maintainers"]
+language = "en"
+src = "site/src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/lightsaway/event-gateway"
+edit-url-template = "https://github.com/lightsaway/event-gateway/edit/master/{path}"
+site-url = "/event-gateway/"
+default-theme = "light"
+preferred-dark-theme = "navy"
+smart-punctuation = true
+additional-css = ["site/custom.css"]
+
+[output.html.print]
+enable = true

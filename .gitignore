@@ -1,4 +1,5 @@
 /target
+/book
 .zed
 .DS_Store
 node_modules

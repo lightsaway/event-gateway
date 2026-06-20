@@ -1,0 +1,26 @@
+:root {
+  --content-max-width: 980px;
+}
+
+.content main {
+  line-height: 1.62;
+}
+
+.content table {
+  width: 100%;
+}
+
+.content code {
+  overflow-wrap: anywhere;
+}
+
+.warning,
+.note {
+  border-left: 4px solid var(--links);
+  padding: 0.75rem 1rem;
+  background: var(--quote-bg);
+}
+
+.warning {
+  border-left-color: #c2410c;
+}

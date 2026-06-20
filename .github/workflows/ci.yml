@@ -100,6 +100,23 @@ jobs:
       - name: Build
         run: npm run build
 
+  docs:
+    name: Documentation
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5.3
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: lychee@0.24.2
+
+      - name: Build and check documentation
+        run: make ci-docs
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest

@@ -1,4 +1,13 @@
-.PHONY: loadtest frontend-dev frontend-build frontend-clean ci-quality ci-test ci-audit ci-ui
+CARGO ?= cargo
+NPM ?= npm
+MDBOOK ?= mdbook
+LYCHEE ?= lychee
+DOCKER ?= docker
+TARGET_ARG = $(if $(TARGET),--target $(TARGET),)
+
+.PHONY: loadtest frontend-dev frontend-build frontend-clean site site-check site-serve \
+	docker-build build-release release-validate ci-quality ci-test ci-audit ci-ui \
+	ci-docs ci-check
 
 fe-dev: 
 	cd ui && npm run dev
@@ -60,7 +69,7 @@ frontend-dev:
 	cd ui && npm run dev
 
 frontend-build:
-	cd ui && npm ci && npm run build
+	cd ui && $(NPM) ci && $(NPM) run build
 
 frontend-clean:
 	rm -rf ui/dist
@@ -69,14 +78,40 @@ clean: frontend-clean
 	cargo clean
 
 ci-quality:
-	cargo fmt --all -- --check
-	cargo clippy --locked --workspace --all-targets
+	$(CARGO) fmt --all -- --check
+	$(CARGO) clippy --locked --workspace --all-targets -- -D warnings
 
 ci-test:
-	cargo test --locked --workspace --all-targets
+	$(CARGO) test --locked --workspace --all-targets
 
 ci-audit:
 	cargo audit
 
 ci-ui:
-	cd ui && npm ci && npm audit --omit=dev && npm run build
+	cd ui && $(NPM) ci && $(NPM) audit --omit=dev && $(NPM) run build
+
+site:
+	$(MDBOOK) build
+
+site-check: site
+	$(LYCHEE) --offline --no-progress --exclude-path 'book/404.html' book
+
+site-serve:
+	$(MDBOOK) serve --open
+
+docker-build:
+	$(DOCKER) build -t event-gateway:local .
+
+build-release: frontend-build
+	$(CARGO) build --release --locked -p event-gateway $(TARGET_ARG)
+
+release-validate:
+	@test -n "$(TAG)" || { echo "TAG is required, for example TAG=v0.1.0"; exit 1; }
+	@test "$(TAG)" = "v$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')" || { \
+		echo "Tag $(TAG) does not match Cargo.toml version v$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"; \
+		exit 1; \
+	}
+
+ci-docs: site-check
+
+ci-check: ci-quality ci-test ci-ui ci-docs
