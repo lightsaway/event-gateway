@@ -875,7 +875,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tower",
- "tower-http 0.5.2",
+ "tower-http 0.6.11",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -3927,6 +3927,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
  "url",
 ]
 
