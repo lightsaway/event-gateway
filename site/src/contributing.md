@@ -2,7 +2,7 @@
 
 ## Toolchain
 
-- Rust 1.88;
+- Rust 1.96;
 - Node.js 22;
 - Docker with BuildKit;
 - mdBook 0.5.3;

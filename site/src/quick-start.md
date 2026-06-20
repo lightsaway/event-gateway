@@ -22,7 +22,7 @@ rejected with HTTP 406 until a rule is created.
 
 Requirements:
 
-- Rust 1.88;
+- Rust 1.96;
 - Node.js 22;
 - native C/C++ build tools for `librdkafka`.
 

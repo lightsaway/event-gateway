@@ -44,7 +44,7 @@ make frontend-build
 cargo build --release --locked
 ```
 
-The project uses Rust 1.88 and Node.js 22.
+The project uses Rust 1.96 and Node.js 22.
 
 ## Container Images
 

@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY ui ./
 RUN npm run build
 
-FROM rust:1.88-alpine AS builder
+FROM rust:1.96-alpine AS builder
 
 RUN apk add --no-cache \
     pkgconfig \
