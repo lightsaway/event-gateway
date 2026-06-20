@@ -1,6 +1,6 @@
+use log::{debug, error, info, warn};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::task;
-use log::{debug, error, info, warn};
 
 use crate::{
     model::{
@@ -13,16 +13,20 @@ use crate::{
     store::storage::{Storage, StorageError},
 };
 
+use futures::TryFutureExt;
 use jsonschema::{Draft, JSONSchema};
 use serde_json::{Map, Value};
 use uuid::Uuid;
-use futures::TryFutureExt;
 
 pub trait GateWay {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError>;
 
     async fn add_routing_rule(&self, rule: &TopicRoutingRule) -> Result<(), GatewayError>;
-    async fn update_routing_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), GatewayError>;
+    async fn update_routing_rule(
+        &self,
+        id: Uuid,
+        rule: &TopicRoutingRule,
+    ) -> Result<(), GatewayError>;
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError>;
     async fn delete_routing_rule(&self, id: &Uuid) -> Result<(), GatewayError>;
 
@@ -50,27 +54,46 @@ impl std::fmt::Display for GatewayError {
     }
 }
 
+#[derive(Debug)]
+struct InvalidSamplingThreshold(f64);
+
+impl std::fmt::Display for InvalidSamplingThreshold {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "sampling threshold must be a finite value between 0 and 100, got {}",
+            self.0
+        )
+    }
+}
+
+impl std::error::Error for InvalidSamplingThreshold {}
+
 struct EventSamplingConfig {
     enabled: bool,
     threshold: f64,
 }
 
 impl EventSamplingConfig {
-    fn new(enabled: bool, threshold: f64) -> Self {
-        Self { enabled, threshold }
+    fn new(enabled: bool, threshold: f64) -> Result<Self, InvalidSamplingThreshold> {
+        if !threshold.is_finite() || !(0.0..=100.0).contains(&threshold) {
+            return Err(InvalidSamplingThreshold(threshold));
+        }
+
+        Ok(Self { enabled, threshold })
     }
 
     fn should_store_event(&self, event: &Event) -> bool {
         if !self.enabled {
             return false;
         }
-        // Convert event ID to a number between 0 and 1
-        let id_bytes = event.id.as_bytes();
-        let hash: u32 = id_bytes.iter().fold(0, |acc, &x| acc.wrapping_add(x as u32));
-        let normalized = (hash as f64) / (u32::MAX as f64);
-        
-        // Store if the normalized value is less than the threshold percentage
-        normalized <= (self.threshold / 100.0)
+
+        if self.threshold == 100.0 {
+            return true;
+        }
+
+        let normalized = event.id.as_u128() as f64 / u128::MAX as f64;
+        normalized < self.threshold / 100.0
     }
 }
 
@@ -87,15 +110,22 @@ impl EventGateway {
         sampling_enabled: bool,
         sampling_threshold: f64,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(EventGateway { 
-            publisher, 
+        Ok(EventGateway {
+            publisher,
             store: Arc::new(store),
-            sampling: EventSamplingConfig::new(sampling_enabled, sampling_threshold),
+            sampling: EventSamplingConfig::new(sampling_enabled, sampling_threshold)?,
         })
     }
 
-    pub async fn get_sample_events(&self, limit: i64, offset: i64) -> Result<(Vec<Event>, i64), GatewayError> {
-        self.store.get_sample_events(limit, offset).await.map_err(GatewayError::from)
+    pub async fn get_sample_events(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<Event>, i64), GatewayError> {
+        self.store
+            .get_sample_events(limit, offset)
+            .await
+            .map_err(GatewayError::from)
     }
 
     fn should_store_event(&self, event: &Event) -> bool {
@@ -116,22 +146,33 @@ impl EventGateway {
         let store = Arc::clone(&self.store);
         let event = event.clone();
         let topic_str = topic.into_string();
-        
+
         task::spawn(async move {
             const MAX_ATTEMPTS: u32 = 3;
             const INITIAL_DELAY_MS: u64 = 100;
             const MAX_DELAY_MS: u64 = 5000;
-            
+
             let mut attempts = 0;
             let mut delay = Duration::from_millis(INITIAL_DELAY_MS);
-            
+
             while attempts < MAX_ATTEMPTS {
                 attempts += 1;
-                
-                match store.store_event(&event, routing_id, Some(topic_str.clone()), failure_reason.clone()).await {
+
+                match store
+                    .store_event(
+                        &event,
+                        routing_id,
+                        Some(topic_str.clone()),
+                        failure_reason.clone(),
+                    )
+                    .await
+                {
                     Ok(_) => {
                         if attempts > 1 {
-                            info!("Successfully stored event {} after {} attempts", event.id, attempts);
+                            info!(
+                                "Successfully stored event {} after {} attempts",
+                                event.id, attempts
+                            );
                         }
                         return;
                     }
@@ -147,21 +188,80 @@ impl EventGateway {
                                 "Failed to store event {} (attempt {}/{}): {:?}. Retrying in {:?}...", 
                                 event.id, attempts, MAX_ATTEMPTS, e, delay
                             );
-                            
+
                             // Sleep before retrying
                             tokio::time::sleep(delay).await;
-                            
+
                             // Exponential backoff with jitter and max cap
                             delay = std::cmp::min(
-                                    // Add simple jitter based on event ID
-                                delay * 2 + Duration::from_millis((event.id.as_u128() % 100) as u64),
-                                Duration::from_millis(MAX_DELAY_MS)
+                                // Add simple jitter based on event ID
+                                delay * 2
+                                    + Duration::from_millis((event.id.as_u128() % 100) as u64),
+                                Duration::from_millis(MAX_DELAY_MS),
                             );
                         }
                     }
                 }
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EventSamplingConfig;
+    use crate::model::event::{Data, Event};
+    use std::collections::HashMap;
+    use uuid::Uuid;
+
+    fn event_with_id(id: Uuid) -> Event {
+        Event {
+            id,
+            event_type: "test.event".to_string(),
+            event_version: None,
+            metadata: HashMap::new(),
+            transport_metadata: None,
+            data_type: None,
+            data: Data::String("test".to_string()),
+            timestamp: None,
+            origin: Some("test".to_string()),
+        }
+    }
+
+    #[test]
+    fn sampling_is_disabled_when_configured_off() {
+        let config = EventSamplingConfig::new(false, 100.0).unwrap();
+
+        assert!(!config.should_store_event(&event_with_id(Uuid::nil())));
+    }
+
+    #[test]
+    fn sampling_respects_zero_and_full_thresholds() {
+        let event = event_with_id(Uuid::new_v4());
+
+        assert!(!EventSamplingConfig::new(true, 0.0)
+            .unwrap()
+            .should_store_event(&event));
+        assert!(EventSamplingConfig::new(true, 100.0)
+            .unwrap()
+            .should_store_event(&event));
+    }
+
+    #[test]
+    fn sampling_uses_the_full_uuid_range() {
+        let config = EventSamplingConfig::new(true, 50.0).unwrap();
+        let low_id = Uuid::from_u128(u128::MAX / 4);
+        let high_id = Uuid::from_u128((u128::MAX / 4) * 3);
+
+        assert!(config.should_store_event(&event_with_id(low_id)));
+        assert!(!config.should_store_event(&event_with_id(high_id)));
+    }
+
+    #[test]
+    fn sampling_rejects_invalid_thresholds() {
+        assert!(EventSamplingConfig::new(true, -0.1).is_err());
+        assert!(EventSamplingConfig::new(true, 100.1).is_err());
+        assert!(EventSamplingConfig::new(true, f64::NAN).is_err());
     }
 }
 
@@ -185,7 +285,11 @@ impl From<PublisherError> for GatewayError {
 
 impl GateWay for EventGateway {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError> {
-        let rules = self.store.get_all_rules().await.map_err(GatewayError::from)?;
+        let rules = self
+            .store
+            .get_all_rules()
+            .await
+            .map_err(GatewayError::from)?;
         let routings = TopicRoutings { rules };
 
         match routings.route(&event) {
@@ -213,14 +317,19 @@ impl GateWay for EventGateway {
                             "Validating schema for event data: {} [topic={}]",
                             json, routing.topic
                         );
-                        
+
                         // Collect validation errors from all schemas
                         let mut schema_errors = Vec::new();
                         for schema in &schemas {
                             if let Err(errors) = schema.schema.validate(&json) {
-                                let error_details = errors.iter()
-                                    .map(|e| format!("Field '{}': {} (at schema path: {})", 
-                                                   e.instance_path, e.message, e.schema_path))
+                                let error_details = errors
+                                    .iter()
+                                    .map(|e| {
+                                        format!(
+                                            "Field '{}': {} (at schema path: {})",
+                                            e.instance_path, e.message, e.schema_path
+                                        )
+                                    })
                                     .collect::<Vec<_>>()
                                     .join("; ");
                                 schema_errors.push((schema, error_details));
@@ -239,28 +348,34 @@ impl GateWay for EventGateway {
                         "Event {} failed schema validation for '{}': {}",
                         event.id, failed_schema.name, error_details
                     );
-                    
+
                     // Store the event with detailed schema validation error
                     self.store_event_in_background(
                         event,
                         Some(routing.id),
                         routing.topic.clone(),
-                        Some(format!("Schema validation failed for '{}': {}", failed_schema.name, error_details))
+                        Some(format!(
+                            "Schema validation failed for '{}': {}",
+                            failed_schema.name, error_details
+                        )),
                     );
-                    
+
                     return Err(GatewayError::SchemaInvalid(error_msg));
                 }
 
                 // Try to publish the event
-                let result = self.publisher.publish_one(routing.topic.as_str(), event.to_owned()).await;
-                
+                let result = self
+                    .publisher
+                    .publish_one(routing.topic.as_str(), event.to_owned())
+                    .await;
+
                 match result {
                     Ok(_) => {
                         self.store_event_in_background(
                             event,
                             Some(routing.id),
                             routing.topic.clone(),
-                            None
+                            None,
                         );
                     }
                     Err(e) => {
@@ -268,9 +383,12 @@ impl GateWay for EventGateway {
                             event,
                             Some(routing.id),
                             routing.topic.clone(),
-                            Some(format!("Failed to publish event: {:?}", e))
+                            Some(format!("Failed to publish event: {:?}", e)),
                         );
-                        return Err(GatewayError::InternalError(format!("Failed to publish event: {:?}", e)));
+                        return Err(GatewayError::InternalError(format!(
+                            "Failed to publish event: {:?}",
+                            e
+                        )));
                     }
                 }
                 result.map_err(GatewayError::from)
@@ -280,7 +398,7 @@ impl GateWay for EventGateway {
                     event,
                     None,
                     Topic::new("").unwrap_or_else(|_| Topic::new("unknown").unwrap()),
-                    Some("No topic to route event".to_string())
+                    Some("No topic to route event".to_string()),
                 );
                 Err(GatewayError::NoTopicToRoute(format!(
                     "No topic to route event: {:?}",
@@ -308,8 +426,15 @@ impl GateWay for EventGateway {
         self.store.add_rule(rule).await.map_err(GatewayError::from)
     }
 
-    async fn update_routing_rule(&self, id: Uuid, rule: &TopicRoutingRule) -> Result<(), GatewayError> {
-        self.store.update_rule(id, rule).await.map_err(GatewayError::from)
+    async fn update_routing_rule(
+        &self,
+        id: Uuid,
+        rule: &TopicRoutingRule,
+    ) -> Result<(), GatewayError> {
+        self.store
+            .update_rule(id, rule)
+            .await
+            .map_err(GatewayError::from)
     }
 
     async fn get_routing_rules(&self) -> Result<Vec<TopicRoutingRule>, GatewayError> {
@@ -332,4 +457,3 @@ impl GateWay for EventGateway {
             .map_err(GatewayError::from)
     }
 }
-
