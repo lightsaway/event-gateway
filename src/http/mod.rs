@@ -102,7 +102,7 @@ pub async fn app_router(
     service: Arc<GatewayService>,
     config: &ApiConfig,
     metrics_enabled: bool,
-) -> Router {
+) -> Result<Router, Box<dyn std::error::Error>> {
     let mut routes = Router::new()
         .route("/event", post(handle_event))
         .route("/routing-rules", get(read_rules))
@@ -124,10 +124,7 @@ pub async fn app_router(
     let router = match &config.jwt_auth {
         Some(cfg) => {
             let authorizer: Authorizer<RegisteredClaims> =
-                JwtAuthorizer::from_jwks_url(&cfg.jwks_url)
-                    .build()
-                    .await
-                    .unwrap();
+                JwtAuthorizer::from_jwks_url(&cfg.jwks_url).build().await?;
             Router::new()
                 .nest(&prefix, routes)
                 .layer(authorizer.into_layer())
@@ -136,9 +133,9 @@ pub async fn app_router(
             .nest(&prefix, routes)
             .layer(Extension(Option::<RegisteredClaims>::None)),
     };
-    router
+    Ok(router
         .layer(axum::middleware::from_fn(extract_request_metadata))
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http()))
 }
 
 async fn extract_request_metadata(

@@ -68,7 +68,7 @@ pub struct KafkaPublisher {
 }
 
 impl KafkaPublisher {
-    pub fn new(cfg: KafkaPublisherConfig) -> Self {
+    pub fn new(cfg: KafkaPublisherConfig) -> Result<Self, PublisherError> {
         let producer: FutureProducer = ClientConfig::new()
             .set("bootstrap.servers", cfg.brokers.join(","))
             .set("client.id", cfg.client_id)
@@ -87,11 +87,13 @@ impl KafkaPublisher {
                 cfg.ack_timeout.as_millis().to_string(),
             )
             .create()
-            .expect("Producer creation error");
-        KafkaPublisher {
+            .map_err(|error| {
+                PublisherError::Generic(format!("failed to create Kafka producer: {error}"))
+            })?;
+        Ok(KafkaPublisher {
             producer,
             metadata_field_as_key: cfg.metadata_field_as_key,
-        }
+        })
     }
 }
 

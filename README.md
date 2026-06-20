@@ -84,6 +84,14 @@ cargo build --release
 APP_CONFIG_PATH=config-postgres.toml cargo run
 ```
 
+Environment overrides use double underscores between configuration sections.
+Field names keep their original underscores:
+
+```bash
+APP_SERVER__PORT=8081
+APP_GATEWAY__PUBLISHER__CONNECTION_URL=postgres://postgres:postgres@localhost:5432/postgres
+```
+
 ## PGMQ destination
 
 Route HTTP events into PGMQ by selecting the `pgmq` publisher. Each routing rule's
