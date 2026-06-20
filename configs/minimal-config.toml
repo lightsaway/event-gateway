@@ -18,11 +18,11 @@ compression = "none"
 client_id = "event-gateway"
 acks = -1
 retries = 3
-required_acks = "none"
+required_acks = "all"
 conn_idle_timeout = "5m"
 message_timeout = "5s"
 ack_timeout = "5s"
 metadata_field_as_key = "user_id"
 
 [api]
-prefix = "/api/v1" 
+prefix = "/api/v1"
