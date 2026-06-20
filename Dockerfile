@@ -28,6 +28,7 @@ WORKDIR /usr/src/event-gateway
 ENV OPENSSL_STATIC=1
 
 COPY Cargo.toml Cargo.lock ./
+COPY build.rs ./
 COPY loadtest/Cargo.toml loadtest/Cargo.toml
 COPY migrations ./migrations
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
