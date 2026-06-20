@@ -35,6 +35,7 @@ use store::{
 use crate::gateway::gateway::{EventGateway, GateWay};
 use crate::gateway::metered::MeteredEventGateway;
 use crate::publisher::mqtt_publisher::MqttPublisher;
+use crate::publisher::pgmq_publisher::PgmqPublisher;
 use crate::ui::static_handler;
 
 async fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
@@ -62,12 +63,15 @@ async fn load_storage(config: DatabaseConfig) -> Box<dyn Storage> {
     }
 }
 
-fn load_publisher(config: PublisherConfig) -> Box<dyn Publisher<Event> + Send + Sync> {
-    match config {
+async fn load_publisher(
+    config: PublisherConfig,
+) -> Result<Box<dyn Publisher<Event> + Send + Sync>, Box<dyn std::error::Error>> {
+    Ok(match config {
         PublisherConfig::NoOp => Box::new(NoOpPublisher),
         PublisherConfig::Kafka(kafka_config) => Box::new(KafkaPublisher::new(kafka_config)),
         PublisherConfig::Mqtt(mqtt_config) => Box::new(MqttPublisher::new(mqtt_config)),
-    }
+        PublisherConfig::Pgmq(pgmq_config) => Box::new(PgmqPublisher::new(pgmq_config).await?),
+    })
 }
 
 fn load_configuration() -> Result<AppConfig, String> {
@@ -100,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_config = load_configuration().unwrap();
     info!("Loaded config: {app_config}");
     let storage = load_storage(app_config.database.clone()).await;
-    let publisher = load_publisher(app_config.gateway.publisher.clone());
+    let publisher = load_publisher(app_config.gateway.publisher.clone()).await?;
     let base_gateway = EventGateway::new(publisher, storage);
 
     let service: Arc<dyn GateWay + Send + Sync> = if app_config.gateway.metrics_enabled {

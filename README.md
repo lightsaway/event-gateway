@@ -84,6 +84,36 @@ cargo build --release
 APP_CONFIG_PATH=config-postgres.toml cargo run
 ```
 
+## PGMQ destination
+
+Route HTTP events into PGMQ by selecting the `pgmq` publisher. Each routing rule's
+topic is used as the PGMQ queue name. Create those queues before starting the
+gateway.
+
+```toml
+[gateway.publisher]
+type = "pgmq"
+connection_url = "postgres://postgres:postgres@postgres:5432/postgres"
+max_connections = 10
+delay_seconds = 0
+```
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgmq;
+SELECT pgmq.create('outbox');
+```
+
+Configure `pgmq-relay` to read the same queue:
+
+```toml
+[pgmq]
+connection_url = "postgres://postgres:postgres@postgres:5432/postgres"
+
+[[queues]]
+queue_name = "outbox"
+destination_topic = "events"
+```
+
 ### Docker Deployment
 
 The project includes Docker and Docker Compose configuration for containerized deployment:
@@ -270,4 +300,4 @@ Event Gateway follows a modular architecture:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.

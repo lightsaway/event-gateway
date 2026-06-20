@@ -1,0 +1,36 @@
+debug_mode = false
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[database]
+type = "inMemory"
+initial_data_json = '''{
+    "routing_rules": [
+        {
+            "id": "890fb970-7e68-473a-9fdf-b88e8bac6221",
+            "order": 0,
+            "topic": "outbox",
+            "eventTypeCondition": {
+                "type": "startsWith",
+                "value": "order."
+            },
+            "eventVersionCondition": null,
+            "description": "Route order events to PGMQ."
+        }
+    ],
+    "topic_validations": {}
+}'''
+
+[gateway]
+metrics_enabled = true
+
+[gateway.publisher]
+type = "pgmq"
+connection_url = "postgres://postgres:postgres@localhost:5432/postgres"
+max_connections = 10
+delay_seconds = 0
+
+[api]
+prefix = "/api/v1"

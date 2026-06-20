@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::publisher::kafka_publisher::KafkaPublisherConfig;
 use crate::publisher::mqtt_publisher::MqttPublisherConfig;
+use crate::publisher::pgmq_publisher::PgmqPublisherConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +47,7 @@ pub enum PublisherConfig {
     NoOp,
     Kafka(KafkaPublisherConfig),
     Mqtt(MqttPublisherConfig),
+    Pgmq(PgmqPublisherConfig),
 }
 
 #[derive(Debug, Deserialize)]
@@ -199,6 +201,44 @@ mod tests {
                 assert_eq!(pg_config.cache_refresh_interval_secs, 600);
             }
             _ => panic!("Expected PostgresDatabaseConfig"),
+        }
+    }
+
+    #[test]
+    fn deserialize_pgmq_publisher_config() {
+        let toml = r#"
+            debug_mode = false
+
+            [server]
+            host = "localhost"
+            port = 8080
+
+            [database]
+            type = "inMemory"
+
+            [gateway]
+            metrics_enabled = true
+
+            [gateway.publisher]
+            type = "pgmq"
+            connection_url = "postgres://postgres:postgres@localhost:5432/postgres"
+            max_connections = 5
+            delay_seconds = 2
+
+            [api]
+        "#;
+
+        let config = config_from_str(toml, FileFormat::Toml).unwrap();
+        match config.gateway.publisher {
+            PublisherConfig::Pgmq(pgmq) => {
+                assert_eq!(
+                    pgmq.connection_url,
+                    "postgres://postgres:postgres@localhost:5432/postgres"
+                );
+                assert_eq!(pgmq.max_connections, 5);
+                assert_eq!(pgmq.delay_seconds, 2);
+            }
+            _ => panic!("Expected PgmqPublisherConfig"),
         }
     }
 }
