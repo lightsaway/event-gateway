@@ -85,7 +85,7 @@ ci-test:
 	$(CARGO) test --locked --workspace --all-targets
 
 ci-audit:
-	cargo audit
+	cargo-audit audit
 
 ci-ui:
 	cd ui && $(NPM) ci && $(NPM) audit --omit=dev && $(NPM) run build
