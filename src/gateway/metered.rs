@@ -3,6 +3,7 @@ use crate::{
     model::event::Event,
     model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
 };
+use async_trait::async_trait;
 use prometheus::{
     register_counter_vec, register_histogram_vec, CounterVec, Encoder, HistogramVec, Opts,
     TextEncoder,
@@ -47,6 +48,7 @@ where
     }
 }
 
+#[async_trait]
 impl<T> GateWay for MeteredEventGateway<T>
 where
     T: GateWay,

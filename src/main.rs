@@ -15,7 +15,6 @@ use std::{
 };
 
 use http::app_router;
-use http::app_router_metered;
 
 use axum::response::Response;
 use axum::{
@@ -119,46 +118,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let publisher = load_publisher(app_config.gateway.publisher.clone());
     let base_gateway = EventGateway::new(publisher, storage);
 
-    // If metrics are enabled, create the MeteredEventGateway to register metrics
-    if app_config.gateway.metrics_enabled {
+    let service: Arc<dyn GateWay + Send + Sync> = if app_config.gateway.metrics_enabled {
         info!("Metrics enabled - creating MeteredEventGateway");
         let metered_gateway = MeteredEventGateway::new(base_gateway).map_err(|e| {
             error!("Failed to create metered gateway: {}", e);
             e
         })?;
         info!("Metrics registered successfully");
-
-        let service = Arc::new(metered_gateway);
-        info!("Loaded Gateway");
-
-        let base_router =
-            app_router_metered(service, &app_config.api, app_config.gateway.metrics_enabled).await;
-        let app = Router::new().merge(base_router).fallback(static_handler);
-
-        let ip = app_config.server.host.parse::<IpAddr>().unwrap();
-        let addr = SocketAddr::from((ip, app_config.server.port));
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-        info!(
-            "🚀 Started Server at {}:{}",
-            app_config.server.host, app_config.server.port
-        );
-        axum::serve(listener, app).await.unwrap();
+        Arc::new(metered_gateway)
     } else {
-        let service = Arc::new(base_gateway);
-        info!("Loaded Gateway");
+        Arc::new(base_gateway)
+    };
+    info!("Loaded Gateway");
 
-        let base_router =
-            app_router(service, &app_config.api, app_config.gateway.metrics_enabled).await;
-        let app = Router::new().merge(base_router).fallback(static_handler);
+    let base_router =
+        app_router(service, &app_config.api, app_config.gateway.metrics_enabled).await;
+    let app = Router::new().merge(base_router).fallback(static_handler);
 
-        let ip = app_config.server.host.parse::<IpAddr>().unwrap();
-        let addr = SocketAddr::from((ip, app_config.server.port));
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-        info!(
-            "🚀 Started Server at {}:{}",
-            app_config.server.host, app_config.server.port
-        );
-        axum::serve(listener, app).await.unwrap();
-    }
+    let ip = app_config.server.host.parse::<IpAddr>().unwrap();
+    let addr = SocketAddr::from((ip, app_config.server.port));
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    info!(
+        "🚀 Started Server at {}:{}",
+        app_config.server.host, app_config.server.port
+    );
+    axum::serve(listener, app).await.unwrap();
     Ok(())
 }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use log::debug;
 use std::{collections::HashMap, sync::Arc};
 
@@ -16,7 +17,8 @@ use jsonschema::{Draft, JSONSchema};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
-pub trait GateWay {
+#[async_trait]
+pub trait GateWay: Send + Sync {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError>;
 
     async fn add_routing_rule(&self, rule: &TopicRoutingRule) -> Result<(), GatewayError>;
@@ -87,6 +89,7 @@ impl From<PublisherError> for GatewayError {
     }
 }
 
+#[async_trait]
 impl GateWay for EventGateway {
     async fn handle(&self, event: &Event) -> Result<(), GatewayError> {
         let rules = self
