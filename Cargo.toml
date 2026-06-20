@@ -17,7 +17,7 @@ rumqttc = { version = "0.25.1", default-features = false, features = ["use-nativ
 duration-str = "0.7.1"
 futures = "0.3.30"
 rdkafka = { version = "0.36.2", features = ["cmake-build"] }
-jsonschema = { version = "0.17", default-features = false }
+jsonschema = { version = "0.46", default-features = false }
 axum = "0.7.4"
 config = "0.14.0"
 prometheus = "0.14"
