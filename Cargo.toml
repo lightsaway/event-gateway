@@ -16,7 +16,7 @@ repository = "https://github.com/lightsaway/event-gateway"
 rumqttc = { version = "0.25.1", default-features = false, features = ["use-native-tls"] }
 duration-str = "0.7.1"
 futures = "0.3.30"
-rdkafka = { version = "0.36.2", features = ["cmake-build"] }
+rdkafka = { version = "0.39.0", features = ["cmake-build"] }
 jsonschema = { version = "0.17", default-features = false }
 axum = "0.7.4"
 config = "0.14.0"
