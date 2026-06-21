@@ -4,27 +4,43 @@ Releases are tag-driven.
 
 ## Prepare
 
-1. Update the package version in `Cargo.toml`.
-2. Update `Cargo.lock`.
-3. Run:
+Run the release checks before creating the version commit and tag:
 
 ```bash
 make ci-check
 make docker-build
 ```
 
-4. Commit and merge to `master`.
+Then bump the patch version, commit `Cargo.toml` and `Cargo.lock`, and create
+the matching local tag:
+
+```bash
+make create-next-tag
+```
+
+To choose a specific version instead:
+
+```bash
+make create-next-tag VERSION=0.2.0
+```
 
 ## Publish
 
-Create a matching annotated tag:
+Push the generated commit and tag:
 
 ```bash
-git tag -a v0.2.0 -m "v0.2.0"
-git push origin v0.2.0
+git push origin HEAD v0.2.0
 ```
 
 The workflow rejects a tag that does not match the Cargo package version.
+
+The release image reuses the Linux binaries produced by the release matrix.
+The regular `Dockerfile` still builds the UI and Rust application from source
+for local and standalone Docker builds. The release image uses a minimal
+`scratch` runtime containing only the application, its shared libraries, CA
+certificates, and configuration. Health checks for that image should probe
+`/api/v1/health-check` from the orchestrator because the image has no shell or
+HTTP client.
 
 ## Release outputs
 
