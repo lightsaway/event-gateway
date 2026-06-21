@@ -18,7 +18,9 @@ use axum::{
 };
 use hyper::header::USER_AGENT;
 use hyper::StatusCode;
-use jwt_authorizer::{Authorizer, IntoLayer, JwtAuthorizer, RegisteredClaims};
+use jwt_authorizer::{
+    layer::AuthorizationLayer, Authorizer, IntoLayer, JwtAuthorizer, RegisteredClaims,
+};
 use log::{error, warn};
 use prometheus::{Encoder, TextEncoder};
 use serde::Deserialize;
@@ -103,8 +105,30 @@ pub async fn app_router(
     config: &ApiConfig,
     metrics_enabled: bool,
 ) -> Result<Router, Box<dyn std::error::Error>> {
-    let mut routes = Router::new()
-        .route("/event", post(handle_event))
+    let authorization = match &config.jwt_auth {
+        Some(cfg) => {
+            let authorizer: Authorizer<RegisteredClaims> =
+                JwtAuthorizer::from_jwks_url(&cfg.jwks_url).build().await?;
+            Some(authorizer.into_layer())
+        }
+        None => None,
+    };
+
+    Ok(build_router(
+        service,
+        config.prefix.as_deref().unwrap_or("/"),
+        metrics_enabled,
+        authorization,
+    ))
+}
+
+fn build_router(
+    service: Arc<GatewayService>,
+    prefix: &str,
+    metrics_enabled: bool,
+    authorization: Option<AuthorizationLayer<RegisteredClaims>>,
+) -> Router {
+    let mut public_routes = Router::new()
         .route("/routing-rules", get(read_rules))
         .route("/routing-rules", post(create_routing_rule))
         .route("/routing-rules/:id", put(update_routing_rule))
@@ -114,28 +138,27 @@ pub async fn app_router(
         .route("/topic-validations/:id", delete(delete_topic_validation))
         .route("/health-check", get(health_check));
 
-    // Add metrics endpoint if metrics are enabled
     if metrics_enabled {
-        routes = routes.route("/metrics", get(metrics_endpoint));
+        public_routes = public_routes.route("/metrics", get(metrics_endpoint));
     }
 
-    let routes = routes.with_state(service);
-    let prefix = config.prefix.clone().unwrap_or("/".to_string());
-    let router = match &config.jwt_auth {
-        Some(cfg) => {
-            let authorizer: Authorizer<RegisteredClaims> =
-                JwtAuthorizer::from_jwks_url(&cfg.jwks_url).build().await?;
-            Router::new()
-                .nest(&prefix, routes)
-                .layer(authorizer.into_layer())
-        }
+    let ingestion_routes = match authorization {
+        Some(layer) => Router::new()
+            .route("/event", post(handle_event))
+            .with_state(Arc::clone(&service))
+            .layer(layer),
         None => Router::new()
-            .nest(&prefix, routes)
+            .route("/event", post(handle_event))
+            .with_state(Arc::clone(&service))
             .layer(Extension(Option::<RegisteredClaims>::None)),
     };
-    Ok(router
+
+    let routes = public_routes.with_state(service).merge(ingestion_routes);
+
+    Router::new()
+        .nest(prefix, routes)
         .layer(axum::middleware::from_fn(extract_request_metadata))
-        .layer(TraceLayer::new_for_http()))
+        .layer(TraceLayer::new_for_http())
 }
 
 async fn extract_request_metadata(
@@ -426,5 +449,53 @@ async fn read_rules(State(service): State<Arc<GatewayService>>) -> Result<Respon
             error!("Failed to read routing rules: {err}");
             Ok(Response::builder().status(500).body(Body::empty()).unwrap())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gateway::gateway::EventGateway;
+    use crate::publisher::publisher::NoOpPublisher;
+    use crate::store::storage::InMemoryStorage;
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn jwt_protects_only_event_ingestion() {
+        let service: Arc<GatewayService> = Arc::new(EventGateway::new(
+            Box::new(NoOpPublisher),
+            Box::new(InMemoryStorage::new()),
+        ));
+        let authorizer: Authorizer<RegisteredClaims> = JwtAuthorizer::from_secret("test-secret")
+            .build()
+            .await
+            .unwrap();
+        let app = build_router(service, "/api/v1", true, Some(authorizer.into_layer()));
+
+        for path in [
+            "/api/v1/health-check",
+            "/api/v1/metrics",
+            "/api/v1/routing-rules",
+            "/api/v1/topic-validations",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+        }
+
+        let response = app
+            .oneshot(
+                Request::post("/api/v1/event")
+                    .header("content-type", "application/json")
+                    .body(Body::from("{}"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 }

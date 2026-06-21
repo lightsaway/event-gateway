@@ -6,8 +6,8 @@ DOCKER ?= docker
 TARGET_ARG = $(if $(TARGET),--target $(TARGET),)
 
 .PHONY: loadtest frontend-dev frontend-build frontend-clean site site-check site-serve \
-	docker-build build-release release-validate ci-quality ci-test ci-audit ci-ui \
-	ci-docs ci-check
+	docker-build build-release version release-validate release-tag create-next-tag \
+	ci-quality ci-test ci-audit ci-ui ci-docs ci-check
 
 fe-dev: 
 	cd ui && npm run dev
@@ -85,7 +85,7 @@ ci-test:
 	$(CARGO) test --locked --workspace --all-targets
 
 ci-audit:
-	cargo audit
+	cargo-audit audit
 
 ci-ui:
 	cd ui && $(NPM) ci && $(NPM) audit --omit=dev && $(NPM) run build
@@ -105,12 +105,29 @@ docker-build:
 build-release: frontend-build
 	$(CARGO) build --release --locked -p event-gateway $(TARGET_ARG)
 
-release-validate:
+# Version management
+version: ## Show current version
+	@awk '/^\[package\]$$/ { in_package = 1; next } in_package && /^\[/ { exit } in_package && /^version = "/ { gsub(/^version = "|"/, ""); print; exit }' Cargo.toml
+
+release-validate: ## Verify TAG matches the Cargo package version
 	@test -n "$(TAG)" || { echo "TAG is required, for example TAG=v0.1.0"; exit 1; }
-	@test "$(TAG)" = "v$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')" || { \
-		echo "Tag $(TAG) does not match Cargo.toml version v$$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"; \
+	@test "$(TAG)" = "v$$($(MAKE) --no-print-directory version)" || { \
+		echo "Tag $(TAG) does not match Cargo.toml version v$$($(MAKE) --no-print-directory version)"; \
 		exit 1; \
 	}
+
+release-tag: ## Create a local release tag from the Cargo package version
+	@git diff --quiet && git diff --cached --quiet || { \
+		echo "Working tree has tracked changes; commit them before tagging"; \
+		exit 1; \
+	}
+	@tag="v$$($(MAKE) --no-print-directory version)"; \
+	$(MAKE) --no-print-directory release-validate TAG="$$tag"; \
+	git tag "$$tag"; \
+	echo "Created $$tag; push it with: git push origin $$tag"
+
+create-next-tag: ## Bump patch version, commit it, and create the matching tag
+	@VERSION="$(VERSION)" ./scripts/create-next-tag.sh
 
 ci-docs: site-check
 
