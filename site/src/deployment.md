@@ -26,8 +26,12 @@ GitHub Container Registry.
 ## Kubernetes probes
 
 The image defines `/api/v1/health-check` as its Docker health check. For
-Kubernetes, use it for liveness only. If JWT is enabled, the endpoint is also
-protected and a plain HTTP probe will fail.
+Kubernetes, use it for liveness only. The endpoint remains public when JWT is
+enabled, so standard HTTP probes work without credentials.
+
+The routing-rule and topic-validation management endpoints are also public.
+Do not expose them to untrusted networks; apply ingress restrictions,
+Kubernetes NetworkPolicy, or an authenticating reverse proxy.
 
 ## Configuration secrets
 
