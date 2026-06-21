@@ -37,4 +37,4 @@
 | Key | Default | Description |
 |---|---:|---|
 | `api.prefix` | `/` | route prefix |
-| `api.jwt_auth.jwks_url` | unset | enables JWT authorization |
+| `api.jwt_auth.jwks_url` | unset | enables JWT authorization for `POST /event` |
