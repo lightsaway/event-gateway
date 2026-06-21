@@ -8,7 +8,7 @@ use rust_embed::RustEmbed;
 const INDEX_HTML: &str = "index.html";
 
 #[derive(RustEmbed)]
-#[folder = "ui/dist"]
+#[folder = "$EVENT_GATEWAY_UI_DIR"]
 pub struct UiAssets;
 
 pub async fn static_handler(uri: Uri) -> impl IntoResponse {
