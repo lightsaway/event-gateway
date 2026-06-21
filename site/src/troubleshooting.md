@@ -41,8 +41,8 @@ The Dockerfile installs static OpenSSL, zlib, curl, CMake, and compiler
 packages required by `librdkafka`. Build from the repository root so UI and
 migration files are in the build context.
 
-## Probe returns 401
+## Event ingestion returns 401
 
-JWT authorization currently covers health and metrics. Supply a token or
-disable JWT for the probe-facing deployment until operational routes are
-separated.
+JWT authorization covers only `POST /event`. Supply a valid bearer token and
+verify `api.jwt_auth.jwks_url`. Health and metrics should remain accessible
+without a token.
