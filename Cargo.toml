@@ -60,7 +60,7 @@ uuid = { version = "1.7.0", features = [
 jwt-authorizer = { version = "0.15.0" }
 log = { version = "0.4.20" }
 env_logger = "0.11"
-jwks = "0.4.0"
+jwks = "0.5.3"
 
 rust-embed = { version = "8.0.0", features = ["interpolate-folder-path"] }
 mime_guess = "2.0.4"
