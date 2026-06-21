@@ -89,5 +89,9 @@ prefix = "/api/v1"
 jwks_url = "https://issuer.example/.well-known/jwks.json"
 ```
 
-When configured, JWT authorization applies to every nested API route,
-including health and metrics.
+When configured, JWT authorization applies to `POST /event` only. Health,
+metrics, routing-rule management, topic-validation management, and the
+embedded UI remain public.
+
+The management API can change live routing and validation behavior. Restrict
+it with a private network, ingress rules, or a separate authenticating proxy.

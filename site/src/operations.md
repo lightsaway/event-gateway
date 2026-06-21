@@ -26,8 +26,9 @@ Enable:
 metrics_enabled = true
 ```
 
-The `/metrics` endpoint exposes event counts and handling duration. When JWT is
-enabled, metrics require authentication.
+The `/metrics` endpoint exposes event counts and handling duration. It remains
+public when JWT is enabled so monitoring systems do not need ingestion
+credentials. Restrict metrics exposure at the network or ingress layer.
 
 ## Logs
 
