@@ -14,11 +14,11 @@ repository = "https://github.com/lightsaway/event-gateway"
 
 [dependencies]
 rumqttc = { version = "0.25.1", default-features = false, features = ["use-native-tls"] }
-duration-str = "0.7.1"
+duration-str = "0.21.0"
 futures = "0.3.30"
 rdkafka = { version = "0.39.0", features = ["cmake-build"] }
-jsonschema = { version = "0.17", default-features = false }
-axum = "0.7.4"
+jsonschema = { version = "0.46", default-features = false }
+axum = "0.8.9"
 config = "0.15.24"
 prometheus = "0.14"
 chrono = { version = "0.4", features = ["serde"] }
@@ -27,13 +27,13 @@ hyper = "1.2.0"
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.6.11", features = ["trace"] }
 tracing = "0.1.40"
-refinery = { version = "0.8", features = ["tokio-postgres"] }
+refinery = { version = "0.9", features = ["tokio-postgres"] }
 tokio-postgres = { version = "0.7", features = [
     "with-uuid-1",
     "with-serde_json-1",
     "with-chrono-0_4",
 ] }
-deadpool-postgres = "0.10"
+deadpool-postgres = "0.14"
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio-rustls",
     "postgres",

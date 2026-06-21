@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,27 +26,16 @@ export function ValidationDialog({ open, onOpenChange, onSave, initialData, onSu
     topic: initialData?.topic ?? '',
     schema: {
       name: initialData?.schema.name ?? '',
-      schema: initialData?.schema.schema ?? '',
+      schema: typeof initialData?.schema.schema === 'string'
+        ? initialData.schema.schema
+        : initialData?.schema.schema
+          ? JSON.stringify(initialData.schema.schema, null, 2)
+          : '',
       description: initialData?.schema.description ?? '',
       event_type: initialData?.schema.event_type ?? '',
       event_version: initialData?.schema.event_version ?? '',
     },
   });
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        topic: initialData.topic,
-        schema: {
-          name: initialData.schema.name,
-          schema: initialData.schema.schema,
-          description: initialData.schema.description ?? '',
-          event_type: initialData.schema.event_type,
-          event_version: initialData.schema.event_version,
-        },
-      });
-    }
-  }, [initialData]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -221,4 +210,4 @@ export function ValidationDialog({ open, onOpenChange, onSave, initialData, onSu
       </DialogContent>
     </Dialog>
   );
-} 
+}

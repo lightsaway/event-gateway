@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getAllValidations, createValidation, deleteValidation, TopicValidationConfig } from '../services/topic-validations';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -12,18 +12,20 @@ export default function TopicValidationsPage() {
   const [validations, setValidations] = useState<Record<string, TopicValidationConfig[]>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadValidations();
-  }, []);
-
-  const loadValidations = async () => {
+  const loadValidations = useCallback(async () => {
     try {
       const data = await getAllValidations();
       setValidations(data);
     } catch (error) {
       console.error('Failed to load validations:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Initial remote data loading is intentionally triggered after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadValidations();
+  }, [loadValidations]);
 
   const handleSave = async (validation: Omit<TopicValidationConfig, 'id'>) => {
     try {
@@ -51,7 +53,7 @@ export default function TopicValidationsPage() {
         description: "Validation schema deleted successfully",
       });
       loadValidations();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete validation schema",
@@ -117,6 +119,7 @@ export default function TopicValidationsPage() {
       </div>
 
       <ValidationDialog
+        key={`new-${isDialogOpen}`}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSave={handleSave}
@@ -124,4 +127,4 @@ export default function TopicValidationsPage() {
       />
     </div>
   );
-} 
+}
