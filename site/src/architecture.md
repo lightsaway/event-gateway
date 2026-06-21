@@ -54,5 +54,5 @@ Unknown non-file paths fall back to `index.html` for client-side routing.
 - health is liveness-only;
 - cached PostgreSQL refresh tasks are internal background tasks;
 - file storage performs blocking filesystem operations;
-- authentication is applied to the full API router, including health and
-  metrics, when JWT is enabled.
+- application JWT protects event ingestion only; management endpoints require
+  network or proxy-level access control.
