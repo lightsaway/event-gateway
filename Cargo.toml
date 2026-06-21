@@ -4,7 +4,7 @@ incremental = true
 
 [package]
 name = "event-gateway"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.96"
 description = "HTTP event validation and routing service for PGMQ, Kafka, and MQTT"
@@ -24,7 +24,7 @@ prometheus = "0.14"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 hyper = "1.2.0"
-tower = "0.4.13"
+tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = "0.1.40"
 refinery = { version = "0.8", features = ["tokio-postgres"] }
@@ -62,7 +62,7 @@ log = { version = "0.4.20" }
 env_logger = "0.11"
 jwks = "0.4.0"
 
-rust-embed = "8.0.0"
+rust-embed = { version = "8.0.0", features = ["interpolate-folder-path"] }
 mime_guess = "2.0.4"
 
 tempfile = "3.10.0"

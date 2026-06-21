@@ -15,6 +15,9 @@ All paths are nested under `api.prefix`, `/api/v1` in the examples.
 | GET | `/health-check` | process liveness |
 | GET | `/metrics` | Prometheus metrics, when enabled |
 
+Only `POST /event` is protected by the configured JWT authorizer. The
+configuration-management and operational endpoints are public.
+
 ## Event responses
 
 | Status | Meaning |
@@ -36,6 +39,9 @@ Caller-provided `transportMetadata` is replaced.
 
 ## Authentication
 
-When `api.jwt_auth` is configured, the JWT authorizer wraps all API routes.
-Operational probes must then send a valid token or use a separate deployment
-strategy.
+When `api.jwt_auth` is configured, callers must send a valid bearer token to
+`POST /event`. JWT `sub` and `iss` claims are copied into event transport
+metadata.
+
+Routing-rule and topic-validation endpoints are not protected by application
+JWT. Restrict them at the ingress, network-policy, or reverse-proxy layer.

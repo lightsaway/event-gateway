@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.7
+
+# Release images package binaries produced by the native Linux matrix jobs.
+# The regular Dockerfile remains the standalone source build used locally.
+FROM ubuntu:24.04 AS runtime-root
+
+ARG TARGETARCH
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libgcc-s1 \
+        libssl3t64 \
+        zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY release-context/${TARGETARCH}/event-gateway /usr/local/bin/event-gateway
+
+RUN set -eux; \
+    mkdir -p /rootfs/etc/ssl/certs /rootfs/home/event-gateway; \
+    cp --parents /usr/local/bin/event-gateway /rootfs; \
+    cp /etc/ssl/certs/ca-certificates.crt /rootfs/etc/ssl/certs/; \
+    ldd /usr/local/bin/event-gateway \
+        | awk '/=> \// { print $3 } /^[[:space:]]*\// { print $1 }' \
+        | sort -u \
+        | xargs -r cp --parents --target-directory=/rootfs
+
+FROM scratch
+
+COPY --from=runtime-root /rootfs /
+COPY configs/minimal-config.toml /etc/event-gateway/config.toml
+
+USER 10001:10001
+WORKDIR /home/event-gateway
+
+EXPOSE 8080
+ENV RUST_LOG=info
+ENV APP_CONFIG_PATH=/etc/event-gateway/config.toml
+
+CMD ["event-gateway"]
