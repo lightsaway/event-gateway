@@ -9,6 +9,40 @@ HTTP -> Event Gateway -> PGMQ -> pgmq-relay -> Kafka / RabbitMQ / NATS
 
 Full documentation: <https://lightsaway.github.io/event-gateway/>
 
+## Architecture
+
+```mermaid
+flowchart LR
+    Client[HTTP client]
+    API[Axum API]
+    Auth[Optional JWT validation]
+    Gateway[Event Gateway]
+    Config[(Routing rules<br/>and schemas)]
+    Router[Route and validate]
+    Publisher{Publisher}
+    PGMQ[(PostgreSQL<br/>PGMQ)]
+    Kafka[Kafka]
+    MQTT[MQTT]
+    Relay[pgmq-relay]
+    Brokers[Kafka / RabbitMQ / NATS]
+
+    Client -->|POST /event| API
+    API --> Auth
+    Auth --> Gateway
+    Config --> Gateway
+    Gateway --> Router
+    Router --> Publisher
+    Publisher --> PGMQ
+    Publisher --> Kafka
+    Publisher --> MQTT
+    PGMQ --> Relay
+    Relay --> Brokers
+```
+
+JWT validation applies only to event ingestion. Health, metrics, and
+configuration-management endpoints should be protected at the network or
+reverse-proxy layer.
+
 ## Quick Start
 
 ```bash
