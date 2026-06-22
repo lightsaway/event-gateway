@@ -4,7 +4,6 @@ use crate::model::event::Event;
 use crate::model::expressions::Condition;
 use crate::model::routing::{DataSchema, TopicRoutingRule, TopicValidationConfig};
 use crate::model::topic::Topic;
-use axum::async_trait;
 use axum::extract::{FromRequestParts, Path, Request};
 use axum::http::request::Parts;
 use axum::middleware::Next;
@@ -12,15 +11,13 @@ use axum::routing::delete;
 use axum::{
     body::Body,
     extract::{Extension, State},
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post, put},
     Json, Router,
 };
 use hyper::header::USER_AGENT;
 use hyper::StatusCode;
-use jwt_authorizer::{
-    layer::AuthorizationLayer, Authorizer, IntoLayer, JwtAuthorizer, RegisteredClaims,
-};
+use jwt_authorizer::{Authorizer, JwtAuthorizer, RegisteredClaims};
 use log::{error, warn};
 use prometheus::{Encoder, TextEncoder};
 use serde::Deserialize;
@@ -52,8 +49,7 @@ impl RequestMetadata {
     }
 }
 
-#[async_trait]
-impl<S> FromRequestParts<S> for RequestMetadata {
+impl<S: Sync> FromRequestParts<S> for RequestMetadata {
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
@@ -109,7 +105,7 @@ pub async fn app_router(
         Some(cfg) => {
             let authorizer: Authorizer<RegisteredClaims> =
                 JwtAuthorizer::from_jwks_url(&cfg.jwks_url).build().await?;
-            Some(authorizer.into_layer())
+            Some(Arc::new(authorizer))
         }
         None => None,
     };
@@ -126,16 +122,16 @@ fn build_router(
     service: Arc<GatewayService>,
     prefix: &str,
     metrics_enabled: bool,
-    authorization: Option<AuthorizationLayer<RegisteredClaims>>,
+    authorization: Option<Arc<Authorizer<RegisteredClaims>>>,
 ) -> Router {
     let mut public_routes = Router::new()
         .route("/routing-rules", get(read_rules))
         .route("/routing-rules", post(create_routing_rule))
-        .route("/routing-rules/:id", put(update_routing_rule))
-        .route("/routing-rules/:id", delete(delete_routing_rule))
+        .route("/routing-rules/{id}", put(update_routing_rule))
+        .route("/routing-rules/{id}", delete(delete_routing_rule))
         .route("/topic-validations", get(read_topic_validations))
         .route("/topic-validations", post(create_topic_validation))
-        .route("/topic-validations/:id", delete(delete_topic_validation))
+        .route("/topic-validations/{id}", delete(delete_topic_validation))
         .route("/health-check", get(health_check));
 
     if metrics_enabled {
@@ -146,7 +142,7 @@ fn build_router(
         Some(layer) => Router::new()
             .route("/event", post(handle_event))
             .with_state(Arc::clone(&service))
-            .layer(layer),
+            .route_layer(axum::middleware::from_fn_with_state(layer, authorize_event)),
         None => Router::new()
             .route("/event", post(handle_event))
             .with_state(Arc::clone(&service))
@@ -159,6 +155,27 @@ fn build_router(
         .nest(prefix, routes)
         .layer(axum::middleware::from_fn(extract_request_metadata))
         .layer(TraceLayer::new_for_http())
+}
+
+async fn authorize_event(
+    State(authorizer): State<Arc<Authorizer<RegisteredClaims>>>,
+    mut req: Request<Body>,
+    next: Next,
+) -> Response {
+    let Some(token) = authorizer.extract_token(req.headers()) else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+
+    match authorizer.check_auth(&token).await {
+        Ok(token_data) => {
+            req.extensions_mut().insert(Some(token_data.claims));
+            next.run(req).await
+        }
+        Err(err) => {
+            warn!("JWT authorization failed: {err}");
+            StatusCode::UNAUTHORIZED.into_response()
+        }
+    }
 }
 
 async fn extract_request_metadata(
@@ -471,7 +488,7 @@ mod tests {
             .build()
             .await
             .unwrap();
-        let app = build_router(service, "/api/v1", true, Some(authorizer.into_layer()));
+        let app = build_router(service, "/api/v1", true, Some(Arc::new(authorizer)));
 
         for path in [
             "/api/v1/health-check",

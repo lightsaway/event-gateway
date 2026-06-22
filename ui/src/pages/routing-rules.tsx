@@ -53,16 +53,12 @@ export default function RoutingRulesPage() {
   }
 
   async function handleSave(rule: Omit<TopicRoutingRule, 'id'>) {
-    try {
-      if (selectedRule) {
-        await updateRule(selectedRule.id, { ...rule, id: selectedRule.id });
-        setRules(rules.map(r => r.id === selectedRule.id ? { ...rule, id: selectedRule.id } : r));
-      } else {
-        const newRule = await createRule(rule);
-        setRules([...rules, newRule]);
-      }
-    } catch (err) {
-      throw err;
+    if (selectedRule) {
+      await updateRule(selectedRule.id, { ...rule, id: selectedRule.id });
+      setRules(rules.map(r => r.id === selectedRule.id ? { ...rule, id: selectedRule.id } : r));
+    } else {
+      const newRule = await createRule(rule);
+      setRules([...rules, newRule]);
     }
   }
 
@@ -156,6 +152,7 @@ export default function RoutingRulesPage() {
       </Table>
 
       <RuleDialog
+        key={`${selectedRule?.id ?? 'new'}-${dialogOpen}`}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSave={handleSave}
@@ -163,4 +160,4 @@ export default function RoutingRulesPage() {
       />
     </div>
   );
-} 
+}

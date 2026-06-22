@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Form, Input, Select, Button, Tabs, Table, Tag, Tooltip } from 'antd';
 import { v4 as uuidv4 } from 'uuid';
-import { Event, EventFormValues } from '../types/events';
+import { Event, EventFormValues, JsonValue } from '../types/events';
 import { sendEvent } from '../services/events';
 import { useToast } from "@/hooks/use-toast"
 import { Copy, Trash2 } from 'lucide-react';
@@ -12,8 +12,8 @@ interface StoredEvent {
   id: string;
   eventType: string;
   eventVersion: string;
-  data: any;
-  metadata?: Record<string, any>;
+  data: JsonValue;
+  metadata?: Record<string, JsonValue>;
   submittedAt: string;
   result: 'success' | 'error';
   errorMessage?: string;
@@ -26,18 +26,17 @@ const PlaygroundPage: React.FC = () => {
   const [form] = Form.useForm();
   const [rawJson, setRawJson] = useState('');
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<StoredEvent[]>([]);
-
-  useEffect(() => {
+  const [history, setHistory] = useState<StoredEvent[]>(() => {
     const savedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
     if (savedHistory) {
       try {
-        setHistory(JSON.parse(savedHistory));
+        return JSON.parse(savedHistory) as StoredEvent[];
       } catch (error) {
         console.error('Failed to load history from localStorage:', error);
       }
     }
-  }, []);
+    return [];
+  });
 
   const copyToClipboard = (event: StoredEvent) => {
     const eventToCopy = {
@@ -188,7 +187,7 @@ const PlaygroundPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: StoredEvent) => (
+      render: (_: unknown, record: StoredEvent) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button
             type="text"
@@ -337,4 +336,4 @@ const PlaygroundPage: React.FC = () => {
   );
 };
 
-export default PlaygroundPage; 
+export default PlaygroundPage;

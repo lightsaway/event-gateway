@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,14 @@ const defaultCondition: Condition = {
   value: '',
 };
 
+const emptyRule: Omit<TopicRoutingRule, 'id'> = {
+  order: 0,
+  topic: '',
+  description: '',
+  eventTypeCondition: defaultCondition,
+  eventVersionCondition: undefined,
+};
+
 export function RuleDialog({
   open,
   onOpenChange,
@@ -26,28 +34,18 @@ export function RuleDialog({
   initialData,
 }: RuleDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Omit<TopicRoutingRule, 'id'>>({
-    order: 0,
-    topic: '',
-    description: '',
-    eventTypeCondition: defaultCondition,
-    eventVersionCondition: undefined,
-  });
-
-  useEffect(() => {
-    if (initialData) {
-      const { id, ...data } = initialData;
-      setFormData(data);
-    } else {
-      setFormData({
-        order: 0,
-        topic: '',
-        description: '',
-        eventTypeCondition: defaultCondition,
-        eventVersionCondition: undefined,
-      });
+  const [formData, setFormData] = useState<Omit<TopicRoutingRule, 'id'>>(() => {
+    if (!initialData) {
+      return emptyRule;
     }
-  }, [initialData, open]);
+    return {
+      order: initialData.order,
+      topic: initialData.topic,
+      description: initialData.description,
+      eventTypeCondition: initialData.eventTypeCondition,
+      eventVersionCondition: initialData.eventVersionCondition,
+    };
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,4 +157,4 @@ export function RuleDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}

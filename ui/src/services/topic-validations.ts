@@ -1,9 +1,10 @@
 import { Uuid } from '../types/common';
+import { JsonValue } from '../types/events';
 
 export interface DataSchema {
   id: Uuid;
   name: string;
-  schema: any;
+  schema: JsonValue;
   description?: string;
   event_type: string;
   event_version: string;
@@ -68,4 +69,4 @@ export async function deleteValidation(id: Uuid): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to delete topic validation');
   }
-} 
+}

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt};
 
 use super::{expressions::Condition, topic::Topic};
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::{Draft, Validator};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
 use uuid::Uuid;
@@ -28,7 +28,7 @@ impl Schema {
 }
 
 pub struct JSchema {
-    compiled_schema: JSONSchema,
+    compiled_schema: Validator,
     raw_schema: Value,
     draft_version: Draft,
 }
@@ -50,7 +50,9 @@ impl PartialEq for JSchema {
 impl Clone for JSchema {
     fn clone(&self) -> Self {
         // Recompile the `JSONSchema` from the stored raw schema
-        let compiled_schema = JSONSchema::compile(&self.raw_schema)
+        let compiled_schema = jsonschema::options()
+            .with_draft(self.draft_version)
+            .build(&self.raw_schema)
             .expect("Failed to compile the schema during cloning");
 
         // Clone the raw schema which is just a `serde_json::Value`
@@ -87,9 +89,9 @@ impl<'de> Deserialize<'de> for JSchema {
         let raw_schema = Value::deserialize(deserializer)?;
         let draft_version = parse_draft_version(&raw_schema);
         // Compile the `Value` into a `JSONSchema`.
-        let compiled_schema = JSONSchema::options()
+        let compiled_schema = jsonschema::options()
             .with_draft(draft_version) // Choose appropriate draft
-            .compile(&raw_schema)
+            .build(&raw_schema)
             .map_err(|e| serde::de::Error::custom(e.to_string()))?;
         Ok(JSchema {
             compiled_schema,
@@ -110,18 +112,19 @@ impl Serialize for JSchema {
 
 impl JSchema {
     pub fn validate(&self, data: &Value) -> Result<(), Vec<ValidationError>> {
-        match self.compiled_schema.validate(data) {
-            Ok(_) => Ok(()),
-            Err(errors) => {
-                let validation_errors: Vec<ValidationError> = errors
-                    .map(|error| ValidationError {
-                        message: error.to_string(),
-                        instance_path: error.instance_path.to_string(),
-                        schema_path: error.schema_path.to_string(),
-                    })
-                    .collect();
-                Err(validation_errors)
-            }
+        if self.compiled_schema.is_valid(data) {
+            Ok(())
+        } else {
+            let validation_errors = self
+                .compiled_schema
+                .iter_errors(data)
+                .map(|error| ValidationError {
+                    message: error.to_string(),
+                    instance_path: error.instance_path().to_string(),
+                    schema_path: error.schema_path().to_string(),
+                })
+                .collect();
+            Err(validation_errors)
         }
     }
 }
@@ -197,7 +200,10 @@ mod tests {
             name: "example".into(),
             description: Some("A schema.".into()),
             schema: Schema::Json(JSchema {
-                compiled_schema: JSONSchema::compile(&raw_schema).unwrap(),
+                compiled_schema: jsonschema::options()
+                    .with_draft(Draft::Draft7)
+                    .build(&raw_schema)
+                    .unwrap(),
                 raw_schema,
                 draft_version: Draft::Draft7,
             }),
@@ -229,7 +235,10 @@ mod tests {
         });
 
         let schema = Schema::Json(JSchema {
-            compiled_schema: JSONSchema::compile(&raw_schema).unwrap(),
+            compiled_schema: jsonschema::options()
+                .with_draft(Draft::Draft7)
+                .build(&raw_schema)
+                .unwrap(),
             raw_schema,
             draft_version: Draft::Draft7,
         });
