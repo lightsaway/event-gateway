@@ -1,5 +1,8 @@
 # Event Gateway
 
+[![CI](https://github.com/lightsaway/event-gateway/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lightsaway/event-gateway/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/lightsaway/event-gateway?display_name=tag&sort=semver)](https://github.com/lightsaway/event-gateway/releases/latest)
+
 Event Gateway accepts events over HTTP, validates JSON payloads, applies
 ordered routing rules, and publishes to PGMQ, Kafka, or MQTT.
 
