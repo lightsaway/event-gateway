@@ -230,6 +230,7 @@ mod tests {
             order,
             topic: Topic::new("topic").unwrap(),
             description: None,
+            group_metadata_field: None,
             event_version_condition: Some(Condition::ONE(StringExpression::Equals {
                 value: "1.0".to_string(),
             })),

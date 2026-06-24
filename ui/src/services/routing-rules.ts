@@ -18,6 +18,7 @@ export interface TopicRoutingRule {
   order: number;
   topic: string;
   description?: string;
+  groupMetadataField?: string;
   eventVersionCondition?: Condition;
   eventTypeCondition: Condition;
 }
@@ -80,4 +81,4 @@ export async function deleteRule(id: Uuid): Promise<void> {
     const error = await response.json().catch(() => ({ message: 'Failed to delete routing rule' }));
     throw new Error(error.message || 'Failed to delete routing rule');
   }
-} 
+}

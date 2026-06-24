@@ -146,6 +146,7 @@ mod tests {
             order: 0,
             topic: Topic::new("test_topic").unwrap(),
             description: None,
+            group_metadata_field: None,
             event_version_condition: None,
             event_type_condition: Condition::ONE(StringExpression::Equals {
                 value: "test_event".to_string(),

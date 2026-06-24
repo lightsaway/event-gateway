@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS routing_rules (
     order_num INTEGER NOT NULL,
     topic TEXT NOT NULL,
     description TEXT,
+    group_metadata_field TEXT,
     event_version_condition JSONB NOT NULL,
     event_type_condition JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -18,4 +19,4 @@ CREATE TABLE IF NOT EXISTS topic_validations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_routing_rules_order ON routing_rules(order_num);
-CREATE INDEX IF NOT EXISTS idx_topic_validations_topic ON topic_validations(topic); 
+CREATE INDEX IF NOT EXISTS idx_topic_validations_topic ON topic_validations(topic);

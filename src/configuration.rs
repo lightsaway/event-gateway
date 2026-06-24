@@ -224,6 +224,7 @@ mod tests {
             connection_url = "postgres://postgres:postgres@localhost:5432/postgres"
             max_connections = 5
             delay_seconds = 2
+            group_metadata_field = "aggregate_id"
 
             [api]
         "#;
@@ -237,6 +238,7 @@ mod tests {
                 );
                 assert_eq!(pgmq.max_connections, 5);
                 assert_eq!(pgmq.delay_seconds, 2);
+                assert_eq!(pgmq.group_metadata_field.as_deref(), Some("aggregate_id"));
             }
             _ => panic!("Expected PgmqPublisherConfig"),
         }

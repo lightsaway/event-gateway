@@ -68,11 +68,12 @@ type = "pgmq"
 connection_url = "postgres://event_gateway:secret@postgres:5432/app"
 max_connections = 10
 delay_seconds = 0
+group_metadata_field = "aggregate_id"
 ```
 
 The routing topic becomes the PGMQ queue name. See the
 [PGMQ publisher guide](https://lightsaway.github.io/event-gateway/publishers/pgmq.html)
-for queue provisioning and relay configuration.
+for queue provisioning, per-routing-rule group overrides, and relay configuration.
 
 ## Build
 

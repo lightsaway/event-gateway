@@ -1,5 +1,5 @@
 use crate::model::event::Event;
-use crate::publisher::publisher::{Publisher, PublisherError};
+use crate::publisher::publisher::{PublishContext, Publisher, PublisherError};
 use async_trait::async_trait;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use serde::Deserialize;
@@ -68,7 +68,12 @@ impl MqttPublisher {
 
 #[async_trait]
 impl Publisher<Event> for MqttPublisher {
-    async fn publish_one(&self, topic: &str, payload: Event) -> Result<(), PublisherError> {
+    async fn publish_one(
+        &self,
+        topic: &str,
+        payload: Event,
+        _context: PublishContext,
+    ) -> Result<(), PublisherError> {
         let payload_json =
             serde_json::to_string(&payload).map_err(|e| PublisherError::Generic(e.to_string()))?;
 

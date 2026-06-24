@@ -101,6 +101,7 @@ export default function RoutingRulesPage() {
             <TableHead>Topic</TableHead>
             <TableHead>Event Type</TableHead>
             <TableHead>Event Version</TableHead>
+            <TableHead>PGMQ Group Field</TableHead>
             <TableHead>Description</TableHead>
             <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
@@ -120,6 +121,7 @@ export default function RoutingRulesPage() {
                   '-'
                 )}
               </TableCell>
+              <TableCell>{rule.groupMetadataField || '-'}</TableCell>
               <TableCell>{rule.description || '-'}</TableCell>
               <TableCell>
                 <div className="flex gap-2">
@@ -143,7 +145,7 @@ export default function RoutingRulesPage() {
           ))}
           {rules.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center">
+              <TableCell colSpan={7} className="text-center">
                 No routing rules found
               </TableCell>
             </TableRow>

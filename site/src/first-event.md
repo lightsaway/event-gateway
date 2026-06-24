@@ -18,6 +18,7 @@ curl -X POST http://localhost:8080/api/v1/routing-rules \
     "order": 0,
     "topic": "orders",
     "description": "Route order events",
+    "groupMetadataField": "order_id",
     "eventTypeCondition": {
       "type": "equals",
       "value": "order.created"
@@ -35,7 +36,8 @@ curl -i -X POST http://localhost:8080/api/v1/event \
     "eventType": "order.created",
     "eventVersion": "1",
     "metadata": {
-      "tenant_id": "acme"
+      "tenant_id": "acme",
+      "order_id": "order-123"
     },
     "data": {
       "type": "json",

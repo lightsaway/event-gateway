@@ -155,6 +155,7 @@ pub struct TopicRoutingRule {
     pub event_type_condition: Condition,
     pub event_version_condition: Option<Condition>,
     pub description: Option<String>,
+    pub group_metadata_field: Option<String>,
 }
 
 #[cfg(test)]
@@ -177,11 +178,30 @@ mod tests {
                 value: "1".into(),
             })),
             description: Some("A routing rule.".into()),
+            group_metadata_field: Some("aggregate_id".into()),
         };
 
         let serialized = serde_json::to_string(&rule).unwrap();
         let deserialized: TopicRoutingRule = serde_json::from_str(&serialized).unwrap();
         assert_eq!(rule, deserialized);
+    }
+
+    #[test]
+    fn routing_rule_without_group_field_remains_compatible() {
+        let rule: TopicRoutingRule = serde_json::from_value(serde_json::json!({
+            "id": Uuid::new_v4(),
+            "order": 1,
+            "topic": "example",
+            "eventTypeCondition": {
+                "type": "equals",
+                "value": "example.created"
+            },
+            "eventVersionCondition": null,
+            "description": null
+        }))
+        .unwrap();
+
+        assert_eq!(rule.group_metadata_field, None);
     }
 
     #[test]

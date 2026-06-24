@@ -63,8 +63,8 @@ impl Storage for PostgresStorage {
             .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client.prepare_cached(
-            "INSERT INTO routing_rules (id, order_num, topic, description, event_version_condition, event_type_condition) 
-             VALUES ($1, $2, $3, $4, $5, $6)"
+            "INSERT INTO routing_rules (id, order_num, topic, description, group_metadata_field, event_version_condition, event_type_condition)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)"
         ).await?;
 
         client
@@ -75,6 +75,7 @@ impl Storage for PostgresStorage {
                     &rule.order,
                     &rule.topic.as_str(),
                     &rule.description,
+                    &rule.group_metadata_field,
                     &serde_json::to_value(&rule.event_version_condition)?,
                     &serde_json::to_value(&rule.event_type_condition)?,
                 ],
@@ -92,7 +93,7 @@ impl Storage for PostgresStorage {
             .map_err(|e| StorageError::IoError(std::io::Error::other(e)))?;
 
         let stmt = client.prepare_cached(
-            "SELECT id, order_num, topic, description, event_version_condition, event_type_condition 
+            "SELECT id, order_num, topic, description, group_metadata_field, event_version_condition, event_type_condition
              FROM routing_rules ORDER BY order_num"
         ).await?;
 
@@ -109,6 +110,7 @@ impl Storage for PostgresStorage {
                 topic: Topic::new(row.get::<_, String>("topic"))
                     .map_err(|e| StorageError::Other(e.to_string()))?,
                 description: row.get("description"),
+                group_metadata_field: row.get("group_metadata_field"),
                 event_version_condition: serde_json::from_value(event_version_condition)?,
                 event_type_condition: serde_json::from_value(event_type_condition)?,
             });
@@ -127,8 +129,9 @@ impl Storage for PostgresStorage {
         let stmt = client
             .prepare_cached(
                 "UPDATE routing_rules
-             SET order_num = $2, topic = $3, description = $4, 
-                 event_version_condition = $5, event_type_condition = $6,
+             SET order_num = $2, topic = $3, description = $4,
+                 group_metadata_field = $5,
+                 event_version_condition = $6, event_type_condition = $7,
                  updated_at = NOW()
              WHERE id = $1",
             )
@@ -142,6 +145,7 @@ impl Storage for PostgresStorage {
                     &rule.order,
                     &rule.topic.as_str(),
                     &rule.description,
+                    &rule.group_metadata_field,
                     &serde_json::to_value(&rule.event_version_condition)?,
                     &serde_json::to_value(&rule.event_type_condition)?,
                 ],

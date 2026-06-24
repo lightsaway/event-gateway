@@ -94,6 +94,7 @@ struct CreateRoutingRuleRequest {
     event_type_condition: Condition,
     event_version_condition: Option<Condition>,
     description: Option<String>,
+    group_metadata_field: Option<String>,
 }
 
 pub async fn app_router(
@@ -300,6 +301,10 @@ async fn create_routing_rule(
         event_type_condition: request.event_type_condition,
         event_version_condition: request.event_version_condition,
         description: request.description,
+        group_metadata_field: request
+            .group_metadata_field
+            .map(|field| field.trim().to_string())
+            .filter(|field| !field.is_empty()),
     };
     let result = service.add_routing_rule(&rule).await;
     match result {
@@ -339,6 +344,10 @@ async fn update_routing_rule(
         event_type_condition: request.event_type_condition,
         event_version_condition: request.event_version_condition,
         description: request.description,
+        group_metadata_field: request
+            .group_metadata_field
+            .map(|field| field.trim().to_string())
+            .filter(|field| !field.is_empty()),
     };
     let result = service.update_routing_rule(id, &rule).await;
     match result {

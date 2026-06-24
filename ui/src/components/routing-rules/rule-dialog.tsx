@@ -23,6 +23,7 @@ const emptyRule: Omit<TopicRoutingRule, 'id'> = {
   order: 0,
   topic: '',
   description: '',
+  groupMetadataField: '',
   eventTypeCondition: defaultCondition,
   eventVersionCondition: undefined,
 };
@@ -42,6 +43,7 @@ export function RuleDialog({
       order: initialData.order,
       topic: initialData.topic,
       description: initialData.description,
+      groupMetadataField: initialData.groupMetadataField,
       eventTypeCondition: initialData.eventTypeCondition,
       eventVersionCondition: initialData.eventVersionCondition,
     };
@@ -111,6 +113,25 @@ export function RuleDialog({
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief description of this rule's purpose"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="groupMetadataField">
+                  PGMQ Group Metadata Field (Optional)
+                </Label>
+                <Input
+                  id="groupMetadataField"
+                  value={formData.groupMetadataField ?? ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      groupMetadataField: e.target.value || undefined,
+                    })
+                  }
+                  placeholder="e.g. order_id"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Overrides the publisher default and becomes the x-pgmq-group header.
+                </p>
               </div>
             </CardContent>
           </Card>

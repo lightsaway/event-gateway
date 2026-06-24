@@ -44,6 +44,7 @@ mod tests {
                     order: 0,
                     topic: Topic::new("topic_one").unwrap(),
                     description: None,
+                    group_metadata_field: None,
                     event_version_condition: None,
                     event_type_condition: Condition::ONE(StringExpression::Equals {
                         value: "event_one".to_string(),
@@ -54,6 +55,7 @@ mod tests {
                     order: 0,
                     topic: Topic::new("topic_two").unwrap(),
                     description: None,
+                    group_metadata_field: None,
                     event_version_condition: None,
                     event_type_condition: Condition::ONE(StringExpression::Equals {
                         value: "event_two".to_string(),
@@ -106,6 +108,7 @@ mod tests {
                 order: 0,
                 topic: Topic::new("topic").unwrap(),
                 description: None,
+                group_metadata_field: None,
                 event_version_condition: Some(Condition::ONE(StringExpression::Equals {
                     value: "1.0".to_string(),
                 })),

@@ -8,6 +8,7 @@ publisher topic or PGMQ queue.
   "order": 0,
   "topic": "orders",
   "description": "Version 1 order events",
+  "groupMetadataField": "order_id",
   "eventTypeCondition": {
     "type": "startsWith",
     "value": "order."
@@ -21,6 +22,10 @@ publisher topic or PGMQ queue.
 
 `eventVersionCondition` is optional. If present, an event without
 `eventVersion` does not match.
+
+`groupMetadataField` is optional. For the PGMQ publisher it overrides the
+global `group_metadata_field` and copies that event metadata value into the
+`x-pgmq-group` header.
 
 ## Conditions
 

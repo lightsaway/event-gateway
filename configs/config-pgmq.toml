@@ -17,6 +17,7 @@ initial_data_json = '''{
                 "value": "order."
             },
             "eventVersionCondition": null,
+            "groupMetadataField": "order_id",
             "description": "Route order events to PGMQ."
         }
     ],
@@ -31,6 +32,7 @@ type = "pgmq"
 connection_url = "postgres://postgres:postgres@localhost:5432/postgres"
 max_connections = 10
 delay_seconds = 0
+group_metadata_field = "aggregate_id"
 
 [api]
 prefix = "/api/v1"

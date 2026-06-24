@@ -21,6 +21,7 @@
 | `connection_url` | required | PostgreSQL URL |
 | `max_connections` | `10` | SQLx pool limit, must be greater than zero |
 | `delay_seconds` | `0` | PGMQ visibility delay, cannot be negative |
+| `group_metadata_field` | unset | Default event metadata field copied to `x-pgmq-group` |
 
 ## PostgreSQL configuration storage
 

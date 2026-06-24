@@ -7,7 +7,7 @@ use crate::{
         event::{Data, Event},
         routing::{DataSchema, TopicRoutingRule, TopicValidationConfig},
     },
-    publisher::publisher::{Publisher, PublisherError},
+    publisher::publisher::{PublishContext, Publisher, PublisherError},
     router::router::{TopicRouter, TopicRoutings},
     store::storage::{Storage, StorageError},
 };
@@ -157,7 +157,13 @@ impl GateWay for EventGateway {
                 }
 
                 self.publisher
-                    .publish_one(routing.topic.as_str(), event.to_owned())
+                    .publish_one(
+                        routing.topic.as_str(),
+                        event.to_owned(),
+                        PublishContext {
+                            group_metadata_field: routing.group_metadata_field.clone(),
+                        },
+                    )
                     .await
                     .map_err(GatewayError::from)
             }

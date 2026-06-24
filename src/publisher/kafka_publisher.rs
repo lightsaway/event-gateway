@@ -9,7 +9,7 @@ use std::{fmt, time::Duration};
 
 use crate::model::event::Event;
 
-use super::publisher::{Publisher, PublisherError};
+use super::publisher::{PublishContext, Publisher, PublisherError};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -99,7 +99,12 @@ impl KafkaPublisher {
 
 #[async_trait]
 impl Publisher<Event> for KafkaPublisher {
-    async fn publish_one(&self, topic: &str, payload: Event) -> Result<(), PublisherError> {
+    async fn publish_one(
+        &self,
+        topic: &str,
+        payload: Event,
+        _context: PublishContext,
+    ) -> Result<(), PublisherError> {
         let default_key = &payload.id.to_string();
         let key = self
             .metadata_field_as_key
