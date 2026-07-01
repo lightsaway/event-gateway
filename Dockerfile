@@ -52,7 +52,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cargo build --release --locked -p event-gateway \
     && cp target/release/event-gateway /tmp/event-gateway
 
-FROM alpine:3.21
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates libgcc
 
