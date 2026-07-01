@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 
 WORKDIR /app/ui
 COPY ui/package.json ui/package-lock.json ./
