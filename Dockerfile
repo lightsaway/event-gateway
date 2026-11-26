@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 
 WORKDIR /app/ui
 COPY ui/package.json ui/package-lock.json ./
@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY ui ./
 RUN npm run build
 
-FROM rust:1.96-alpine AS builder
+FROM rust:1.97-alpine AS builder
 
 RUN apk add --no-cache \
     pkgconfig \
@@ -52,7 +52,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cargo build --release --locked -p event-gateway \
     && cp target/release/event-gateway /tmp/event-gateway
 
-FROM alpine:3.21
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates libgcc
 
